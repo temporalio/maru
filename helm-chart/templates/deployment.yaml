@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "temporal-bench.fullname" . }}
+  labels:
+    {{- include "temporal-bench.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "temporal-bench.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "temporal-bench.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/job: {{ $.Chart.Name }}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "temporal-bench.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+              {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: NAMESPACE
+              value: "{{ .Values.tests.namespaceName }}"
+            - name: NAMESPACE_RETENTION
+              value: "{{ .Values.tests.namespaceRetention }}"
+            - name: FRONTEND_ADDRESS
+              value: "{{ .Values.tests.frontendAddress }}"
+            - name: TLS_CA_CERT_FILE
+              value: "{{ .Values.tests.caCertFile }}"
+            - name: TLS_CLIENT_CERT_FILE
+              value: "{{ .Values.tests.clientCertFile }}"
+            - name: TLS_CLIENT_CERT_PRIVATE_KEY_File
+              value: "{{ .Values.tests.clientCertPrivateKeyFile }}"
+            - name: TLS_CA_CERT_DATA
+              value: "{{ .Values.tests.caCertData }}"
+            - name: TLS_CLIENT_CERT_DATA
+              value: "{{ .Values.tests.clientCertData }}"
+            - name: TLS_CLIENT_CERT_PRIVATE_KEY_DATA
+              value: "{{ .Values.tests.clientCertPrivateKeyData }}"
+            - name: TLS_ENABLE_HOST_VERIFICATION
+              value: "{{ .Values.tests.enableHostVerification }}"
+            - name: NUM_DECISION_POLLERS
+              value: "{{ .Values.tests.numDecisionPollers }}"
+            - name: SKIP_NAMESPACE_CREATION
+              value: "{{ .Values.tests.skipNamespaceCreation }}"
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

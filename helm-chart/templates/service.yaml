@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "temporal-bench.fullname" . }}
+  labels:
+    {{- include "temporal-bench.labels" . | nindent 4 }}
+    prometheus.io/job: {{ $.Chart.Name }}
+    prometheus.io/scrape: 'true'
+    prometheus.io/scheme: http
+    prometheus.io/port: "9090"
+    app.kubernetes.io/headless: 'true'
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 9090
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "temporal-bench.selectorLabels" . | nindent 4 }}
