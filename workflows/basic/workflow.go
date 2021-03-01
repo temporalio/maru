@@ -10,12 +10,12 @@ import (
 
 // WorkflowRequest is used for starting workflow for Basic bench workflow
 type workflowRequest struct {
-	SequenceCount                int
-	ActivityDurationMilliseconds int
+	SequenceCount                int `json:"sequenceCount"`
+	ActivityDurationMilliseconds int `json:"activityDurationMilliseconds"`
 }
 
-// BasicWorkflow implements a basic bench scenario to schedule activities in sequence and parallel
-func BasicWorkflow(ctx workflow.Context, request workflowRequest) error {
+// Workflow implements a basic bench scenario to schedule activities in sequence.
+func Workflow(ctx workflow.Context, request workflowRequest) error {
 
 	logger := workflow.GetLogger(ctx)
 

@@ -186,10 +186,10 @@ func startNamespaceWorker(
 func constructWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 
-	w.RegisterWorkflowWithOptions(basic.BasicWorkflow, workflow.RegisterOptions{Name: "basic-workflow"})
-	w.RegisterActivityWithOptions(basic.BasicActivity, activity.RegisterOptions{Name: "basic-activity"})
+	w.RegisterWorkflowWithOptions(basic.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
+	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
 
-	w.RegisterWorkflowWithOptions(bench.BenchWorkflow, workflow.RegisterOptions{Name: "bench-workflow"})
+	w.RegisterWorkflowWithOptions(bench.Workflow, workflow.RegisterOptions{Name: "bench-workflow"})
 	w.RegisterActivityWithOptions(bench.DriverActivity, activity.RegisterOptions{Name: "bench-driver-activity"})
 	w.RegisterActivityWithOptions(bench.MonitorActivity, activity.RegisterOptions{Name: "bench-monitor-activity"})
 	return w

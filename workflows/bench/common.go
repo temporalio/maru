@@ -10,11 +10,11 @@ const (
 	defaultWorkflowTaskStartToCloseTimeoutDuration = 10 * time.Second
 )
 
-// BenchTestError represents an error that should abort / fail the whole bench test
-type BenchTestError struct {
+// TestError represents an error that should abort / fail the whole bench test
+type TestError struct {
 	Message string
 }
 
-func (b *BenchTestError) Error() string {
+func (b *TestError) Error() string {
 	return b.Message
 }

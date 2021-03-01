@@ -1,8 +1,0 @@
-{
-    "WorkflowName": "basic-workflow",
-    "Concurrency": 2,
-    "Count": 3,
-    "Parameters": {
-        "SequenceCount": 3
-    }
-}

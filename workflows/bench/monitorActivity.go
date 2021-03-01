@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) (*benchWorkflowResponse, error) {
+func MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {
 	logger := activity.GetLogger(ctx)
 	temporalClient, err := common.GetTemporalClientFromContext(ctx)
 	if err != nil {
@@ -31,10 +31,11 @@ func MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) (
 
 type (
 	benchMonitorActivityRequest struct {
-		BaseID       string
-		WorkflowName string
-		Count        int
-		StartTime    time.Time
+		BaseID            string
+		WorkflowName      string
+		Count             int
+		StartTime         time.Time
+		IntervalInSeconds int
 	}
 	workflowTiming struct {
 		StartTime time.Time
@@ -49,7 +50,7 @@ type (
 	}
 )
 
-func (m *benchMonitor) run() (*benchWorkflowResponse, error) {
+func (m *benchMonitor) run() ([]histogramValue, error) {
 	startTime := activity.GetInfo(m.ctx).StartedTime
 	deadline := activity.GetInfo(m.ctx).Deadline.Add(time.Second * -5)
 
@@ -58,11 +59,13 @@ func (m *benchMonitor) run() (*benchWorkflowResponse, error) {
 		return nil, err
 	}
 
+	hist := m.calculateHistogram(stats)
+
 	m.logger.Info("!!! BENCH TEST COMPLETED !!!", "duration", time.Now().Sub(startTime))
-	return stats, nil
+	return hist, nil
 }
 
-func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) (*benchWorkflowResponse, error) {
+func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflowTiming, error) {
 	waitStartTime := activity.GetInfo(m.ctx).StartedTime
 	for {
 		complete, err := m.isComplete()
@@ -81,10 +84,8 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) (*benchWor
 					"expected", m.request.Count,
 					"actual", len(stats),
 				)
-
 			} else {
-				hist := m.calculateHistogram(stats)
-				return &benchWorkflowResponse{Histogram: hist}, nil
+				return stats, nil
 			}
 		}
 
@@ -105,7 +106,7 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) (*benchWor
 		}
 
 		if time.Now().After(deadline) {
-			return nil, &BenchTestError{
+			return nil, &TestError{
 				Message: "timed out waiting for Monitoring phase to finish",
 			}
 		}
@@ -186,7 +187,7 @@ func (m *benchMonitor) calculateHistogram(stats []workflowTiming) []histogramVal
 			endTime = s.CloseTime
 		}
 	}
-	interval := 5 /* seconds */
+	interval := m.request.IntervalInSeconds
 	count := int(endTime.Sub(startTime).Seconds())/interval + 1
 	hist := make([]histogramValue, count)
 	for _, s := range stats {

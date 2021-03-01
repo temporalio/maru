@@ -72,7 +72,7 @@ func (d *benchDriver) run() error {
 		activity.RecordHeartbeat(d.ctx, i)
 
 		if time.Now().After(deadline) {
-			return &BenchTestError{
+			return &TestError{
 				Message: fmt.Sprintf("Timed out driving bench test activity. Progress: %v out of %v",
 					i, d.request.BatchSize),
 			}
