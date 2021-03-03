@@ -31,10 +31,6 @@ bins: bins/temporal-bench
 test: bins
 	@rm -f test
 	@rm -f test.log
-#	@echo $(TEST_DIRS)
-#	@for dir in $(TEST_DIRS); do \
-#		go test -coverprofile=$@ "$$dir" | tee -a test.log; \
-#	done;
 
 update-sdk:
 	go get -u go.temporal.io/api@master

@@ -87,6 +87,7 @@ func (w *benchWorkflow) run() (*benchWorkflowResponse, error) {
 
 	concurrency := 1
 	if w.request.Scenario.Concurrency > 0 {
+		concurrency = w.request.Scenario.Concurrency
 		if w.request.Scenario.Count%concurrency != 0 {
 			return nil, errors.Errorf("request count %d must be a multiple of concurrency %d", w.request.Scenario.Count, concurrency)
 		}

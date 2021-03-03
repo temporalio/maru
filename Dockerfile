@@ -23,10 +23,6 @@ RUN make clean && CGO_ENABLED=0 make bins
 # Stage 2: Bench worker
 FROM alpine:3.12 AS bench-worker
 
-# Install tools needed to look at memory profiles by default
-RUN apk add git go curl
-RUN go get -u github.com/google/pprof
-
 COPY --from=builder /temporal-bench/bins/temporal-bench /usr/local/bin/
 
 ENV NAMESPACE default
