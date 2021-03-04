@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/mikhailshilkov/temporal-bench/common"
+	"github.com/pkg/errors"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
+	"golang.org/x/time/rate"
 	"time"
 )
 
@@ -54,14 +56,14 @@ func (d *benchDriver) run() error {
 		}
 	}
 
-	startTime := time.Now()
+	limit := rate.Inf
+	if d.request.Rate > 0 {
+		limit = rate.Every(time.Second/time.Duration(d.request.Rate))
+	}
+	limiter := rate.NewLimiter(limit, 1)
 	for i := idx; i < d.request.BatchSize; i++ {
-		if d.request.Rate > 0 {
-			now := time.Now()
-			targetTime := startTime.Add(time.Millisecond * time.Duration(1000*(i-idx)/d.request.Rate))
-			if now.Before(targetTime) {
-				time.Sleep(targetTime.Sub(now))
-			}
+		if err := limiter.Wait(d.ctx); err != nil {
+			return errors.Wrapf(err, "waiting for limiter")
 		}
 
 		if err := d.execute(i); err != nil {

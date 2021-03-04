@@ -137,7 +137,7 @@ func (m *benchMonitor) isComplete() (bool, error) {
 }
 
 func (m *benchMonitor) collectWorkflowTimings() []workflowTiming {
-	var states []workflowTiming
+	var stats []workflowTiming
 	filterStartTime := m.request.StartTime.Add(-10 * time.Second)
 	prefix := fmt.Sprintf("%s-%s-", m.request.WorkflowName, m.request.BaseID)
 	var nextPageToken []byte
@@ -161,7 +161,7 @@ func (m *benchMonitor) collectWorkflowTimings() []workflowTiming {
 
 		for _, w := range ws.Executions {
 			if strings.HasPrefix(w.Execution.WorkflowId, prefix) {
-				states = append(states, workflowTiming{
+				stats = append(stats, workflowTiming{
 					StartTime: *w.StartTime,
 					CloseTime: *w.CloseTime,
 				})
@@ -172,8 +172,9 @@ func (m *benchMonitor) collectWorkflowTimings() []workflowTiming {
 			break
 		}
 		nextPageToken = ws.NextPageToken
+		activity.RecordHeartbeat(m.ctx, len(stats))
 	}
-	return states
+	return stats
 }
 
 func (m *benchMonitor) calculateHistogram(stats []workflowTiming) []histogramValue {

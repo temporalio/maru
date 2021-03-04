@@ -22,9 +22,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 
+	"github.com/mikhailshilkov/temporal-bench/bench"
 	"github.com/mikhailshilkov/temporal-bench/common"
-	"github.com/mikhailshilkov/temporal-bench/workflows/basic"
-	"github.com/mikhailshilkov/temporal-bench/workflows/bench"
+	"github.com/mikhailshilkov/temporal-bench/target/basic"
 )
 
 func main() {
@@ -57,7 +57,7 @@ func createNamespaceIfNeeded(logger *zap.Logger, namespace string, hostPort stri
 	logger.Info("Creating namespace", zap.String("namespace", namespace), zap.String("hostPort", hostPort))
 
 	createNamespace := func() error {
-		client, err := client.NewNamespaceClient(client.Options{
+		namespaceClient, err := client.NewNamespaceClient(client.Options{
 			HostPort: hostPort,
 			ConnectionOptions: client.ConnectionOptions{
 				TLS: tlsConfig,
@@ -68,13 +68,13 @@ func createNamespaceIfNeeded(logger *zap.Logger, namespace string, hostPort stri
 			return err
 		}
 
-		defer client.Close()
+		defer namespaceClient.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
 		retention := 10 * time.Hour * 24
-		err = client.Register(ctx, &workflowservice.RegisterNamespaceRequest{
+		err = namespaceClient.Register(ctx, &workflowservice.RegisterNamespaceRequest{
 			Namespace:                        namespace,
 			WorkflowExecutionRetentionPeriod: &retention,
 		})
