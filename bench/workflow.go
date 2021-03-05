@@ -1,6 +1,7 @@
 package bench
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 )
 
 // Workflow represents the main workflow that executes the overall bench test
-func Workflow(ctx workflow.Context, request benchWorkflowRequest) (*benchWorkflowResponse, error) {
+func Workflow(ctx workflow.Context, request benchWorkflowRequest) error {
 	logger := workflow.GetLogger(ctx)
 	w := benchWorkflow{
 		ctx:      ctx,
@@ -52,19 +53,10 @@ type (
 		Report   benchWorkflowRequestReporting `json:"report"`
 	}
 
-	histogramOutputs struct {
-		Json []histogramValue
-		Csv  string
-	}
-
-	benchWorkflowResponse struct {
-		Histogram histogramOutputs
-	}
-
 	histogramValue struct {
-		Started int
-		Closed  int
-		Backlog int
+		Started int `json:"started"`
+		Closed  int `json:"closed"`
+		Backlog int `json:"backlog"`
 	}
 
 	benchWorkflow struct {
@@ -76,20 +68,20 @@ type (
 	}
 )
 
-func (w *benchWorkflow) run() (*benchWorkflowResponse, error) {
+func (w *benchWorkflow) run() error {
 	w.logger.Info("bench driver workflow started")
 
 	startTime := workflow.Now(w.ctx)
 
 	if w.request.Scenario.Count <= 0 {
-		return nil, errors.Errorf("request count %d must be a positive number", w.request.Scenario.Count)
+		return errors.Errorf("request count %d must be a positive number", w.request.Scenario.Count)
 	}
 
 	concurrency := 1
 	if w.request.Scenario.Concurrency > 0 {
 		concurrency = w.request.Scenario.Concurrency
 		if w.request.Scenario.Count%concurrency != 0 {
-			return nil, errors.Errorf("request count %d must be a multiple of concurrency %d", w.request.Scenario.Count, concurrency)
+			return errors.Errorf("request count %d must be a multiple of concurrency %d", w.request.Scenario.Count, concurrency)
 		}
 	}
 
@@ -97,23 +89,21 @@ func (w *benchWorkflow) run() (*benchWorkflowResponse, error) {
 		w.request.Report.IntervalInSeconds = 60
 	}
 
-	err := w.executeDriverActivities(concurrency)
-	if err != nil {
-		return nil, err
+	if err := w.executeDriverActivities(concurrency); err != nil {
+		return err
 	}
 
 	res, err := w.executeMonitorActivity(startTime)
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	if err = w.setupQueries(res); err != nil {
+		return err
 	}
 
 	w.logger.Info("bench driver workflow completed")
-	return &benchWorkflowResponse{
-		Histogram: histogramOutputs{
-			Json: res,
-			Csv:  w.printCsv(res),
-		},
-	}, nil
+	return nil
 }
 
 func (w *benchWorkflow) executeDriverActivities(concurrency int) (finalErr error) {
@@ -157,6 +147,22 @@ func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histo
 	return
 }
 
+func (w *benchWorkflow) setupQueries(res []histogramValue) error {
+	if err := workflow.SetQueryHandler(w.ctx, "histogram", func(input []byte) (string, error) {
+		return w.printJson(res), nil
+	}); err != nil {
+		return err
+	}
+
+	if err := workflow.SetQueryHandler(w.ctx, "histogram_csv", func(input []byte) (string, error) {
+		return w.printCsv(res), nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (w *benchWorkflow) withActivityOptions() workflow.Context {
 	ao := workflow.ActivityOptions{
 		HeartbeatTimeout:    60 * time.Second,
@@ -170,6 +176,14 @@ func (w *benchWorkflow) withActivityOptions() workflow.Context {
 	}
 
 	return workflow.WithActivityOptions(w.ctx, ao)
+}
+
+func (w *benchWorkflow) printJson(values []histogramValue) string {
+	b, err := json.Marshal(values)
+	if err != nil {
+		return errors.Wrapf(err, "printing JSON").Error()
+	}
+	return string(b)
 }
 
 func (w *benchWorkflow) printCsv(values []histogramValue) string {
