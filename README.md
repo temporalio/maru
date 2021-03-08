@@ -50,19 +50,15 @@ This command starts a basic Bench workflow which in turns runs the Basic workflo
 
 ## Inspect the Bench Result
 
-The Bench workflow returns the statistics of the workflow execution. Retrieve the result of the `bench-workflow` with the following command
+The Bench workflow returns the statistics of the workflow execution. You can query the workflow to retrieve execution statistics with the following command
 
 ```
-tctl wf show --wid 1
+$ tctl wf query --qt histogram --wid 1
+Query result:
+[[{"started":6,"closed":6,"backlog":0}]]
 ```
 
-The last event in the list has the type `WorkflowExecutionCompleted` and contains the output data block
-
-```
-[
-  "{Histogram:{Json:[{Started:6,Closed:6,Backlog:0}],Csv:Time (seconds);Workflows Started;Workflows Started Rate;Workflow Closed;Workflow Closed Rate;Backlog\\n60;6;0.100000;6;0.100000;0}}"
-]
-```
+The workflow completed almost instantaneously, so there is just one data point. Let's try a more sophisticated scenario.
 
 ## Start a longer load test using an input file
 
@@ -74,7 +70,34 @@ tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./s
 
 It runs 12,000 workflows in total. The scenario also sets the reporting interval to 10 seconds, which means that the resulting report will have data points for every 10-second interval.
 
-You can convert the workflow result to a chart like the one below using charting software of your choice (this one if from Google Spreadsheets):
+Execute the `histogram` query to retrieve the execution statistics
+
+```
+$ tctl wf query --qt histogram --wid 2
+Query result:
+[[{"started":200,"closed":200,"backlog":0},{"started":200,"closed":200,"backlog":0},
+{"started":200,"closed":200,"backlog":0},{"started":200,"closed":200,"backlog":0},
+{"started":200,"closed":200,"backlog":0},{"started":200...
+```
+
+The result is a JSON array of execution statistics, where each array item represents a single time interval.
+
+You can also retrieve the same information printed as a CSV file with the `histrogram_csv` query
+
+```
+$ tctl wf query --qt histogram_csv --wid 2
+Query result:
+[Time (seconds);Workflows Started;Workflows Started Rate;Workflow Closed;Workflow Closed Rate;Backlog
+10;200;20.000000;200;20.000000;0
+20;200;20.000000;200;20.000000;0
+30;200;20.000000;200;20.000000;0
+40;200;20.000000;200;20.000000;0
+50;200;20.000000;200;20.000000;0
+...
+```
+
+You can convert the workflow result to a chart using charting software of your choice.
+For example, save the CSV to a file, upload it to from Google Spreadsheets, and build a chart from columns 1, 3, 5, and 6:
 
 ![Execution Chart](./images/sample-chart.png)
 
