@@ -23,7 +23,6 @@ export class Bench extends pulumi.ComponentResource {
 
         const registry = new containerregistry.Registry("registry", {
             resourceGroupName: args.resourceGroupName,
-            registryName: pulumi.output(args.resourceGroupName).apply(rg => rg.replace("-", "")),
             sku: {
                 name: "Basic",
             },

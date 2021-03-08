@@ -54,9 +54,10 @@ type (
 	}
 
 	histogramValue struct {
-		Started int `json:"started"`
-		Closed  int `json:"closed"`
-		Backlog int `json:"backlog"`
+		Started   int `json:"started"`
+		Execution int `json:"execution"`
+		Closed    int `json:"closed"`
+		Backlog   int `json:"backlog"`
 	}
 
 	benchWorkflow struct {
@@ -196,6 +197,8 @@ func (w *benchWorkflow) printCsv(values []histogramValue) string {
 		"Time (seconds)",
 		"Workflows Started",
 		"Workflows Started Rate",
+		"Workflows Executions",
+		"Workflows Execution Rate",
 		"Workflow Closed",
 		"Workflow Closed Rate",
 		"Backlog",
@@ -206,6 +209,8 @@ func (w *benchWorkflow) printCsv(values []histogramValue) string {
 			strconv.Itoa((i + 1) * interval),
 			strconv.Itoa(v.Started),
 			fmt.Sprintf("%f", float32(v.Started)/float32(interval)),
+			strconv.Itoa(v.Execution),
+			fmt.Sprintf("%f", float32(v.Execution)/float32(interval)),
 			strconv.Itoa(v.Closed),
 			fmt.Sprintf("%f", float32(v.Closed)/float32(interval)),
 			strconv.Itoa(v.Backlog),

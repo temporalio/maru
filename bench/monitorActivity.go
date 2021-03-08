@@ -38,8 +38,9 @@ type (
 		IntervalInSeconds int
 	}
 	workflowTiming struct {
-		StartTime time.Time
-		CloseTime time.Time
+		StartTime     time.Time
+		ExecutionTime time.Time
+		CloseTime     time.Time
 	}
 
 	benchMonitor struct {
@@ -162,8 +163,9 @@ func (m *benchMonitor) collectWorkflowTimings() []workflowTiming {
 		for _, w := range ws.Executions {
 			if strings.HasPrefix(w.Execution.WorkflowId, prefix) {
 				stats = append(stats, workflowTiming{
-					StartTime: *w.StartTime,
-					CloseTime: *w.CloseTime,
+					StartTime:     *w.StartTime,
+					ExecutionTime: *w.ExecutionTime,
+					CloseTime:     *w.CloseTime,
 				})
 			}
 		}
@@ -194,6 +196,8 @@ func (m *benchMonitor) calculateHistogram(stats []workflowTiming) []histogramVal
 	for _, s := range stats {
 		si := int(s.StartTime.Sub(startTime).Seconds()) / interval
 		hist[si].Started += 1
+		ei := int(s.ExecutionTime.Sub(startTime).Seconds()) / interval
+		hist[ei].Execution += 1
 		ci := int(s.CloseTime.Sub(startTime).Seconds()) / interval
 		hist[ci].Closed += 1
 		for i := si; i < ci; i++ {
