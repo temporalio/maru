@@ -3,7 +3,6 @@ package bench
 import (
 	"context"
 	"fmt"
-	"github.com/mikhailshilkov/temporal-bench/common"
 	"go.temporal.io/api/filter/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/activity"
@@ -13,17 +12,13 @@ import (
 	"time"
 )
 
-func MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {
+func (a *Activities) MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {
 	logger := activity.GetLogger(ctx)
-	temporalClient, err := common.GetTemporalClientFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	m := benchMonitor{
 		ctx:     ctx,
 		logger:  logger,
-		client:  temporalClient,
+		client:  a.temporalClient,
 		request: request,
 	}
 	return m.run()

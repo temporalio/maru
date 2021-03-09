@@ -113,7 +113,7 @@ func (w *benchWorkflow) executeDriverActivities(concurrency int) (finalErr error
 	for i := 0; i < concurrency; i++ {
 		futures = append(futures, workflow.ExecuteActivity(
 			w.withActivityOptions(),
-			"bench-driver-activity",
+			"bench-DriverActivity",
 			benchDriverActivityRequest{
 				BaseID:       fmt.Sprintf("%s-%d", w.baseID, i),
 				BatchSize:    w.request.Scenario.Count / concurrency,
@@ -137,7 +137,7 @@ func (w *benchWorkflow) executeDriverActivities(concurrency int) (finalErr error
 func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histogramValue, err error) {
 	err = workflow.ExecuteActivity(
 		w.withActivityOptions(),
-		"bench-monitor-activity",
+		"bench-MonitorActivity",
 		benchMonitorActivityRequest{
 			WorkflowName:      w.request.Workflow.Name,
 			StartTime:         startTime,

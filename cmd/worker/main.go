@@ -173,9 +173,7 @@ func startNamespaceWorker(
 		logger.Fatal("failed to build temporal client", zap.Error(err))
 	}
 
-	ctx := context.WithValue(context.Background(), common.TemporalClientKey, serviceClient)
-
-	defaultWorker := constructWorker(ctx, serviceClient, logger, common.TaskQueue)
+	defaultWorker := constructWorker(context.Background(), serviceClient, logger, common.TaskQueue)
 
 	err = defaultWorker.Start()
 	if err != nil {
@@ -190,8 +188,7 @@ func constructWorker(ctx context.Context, serviceClient client.Client, logger *z
 	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
 
 	w.RegisterWorkflowWithOptions(bench.Workflow, workflow.RegisterOptions{Name: "bench-workflow"})
-	w.RegisterActivityWithOptions(bench.DriverActivity, activity.RegisterOptions{Name: "bench-driver-activity"})
-	w.RegisterActivityWithOptions(bench.MonitorActivity, activity.RegisterOptions{Name: "bench-monitor-activity"})
+	w.RegisterActivityWithOptions(bench.NewActivities(serviceClient), activity.RegisterOptions{Name: "bench-"})
 	return w
 }
 

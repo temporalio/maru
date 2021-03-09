@@ -3,7 +3,6 @@ package bench
 import (
 	"context"
 	"fmt"
-	"github.com/mikhailshilkov/temporal-bench/common"
 	"github.com/pkg/errors"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
@@ -12,17 +11,12 @@ import (
 	"time"
 )
 
-func DriverActivity(ctx context.Context, request benchDriverActivityRequest) error {
+func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActivityRequest) error {
 	logger := activity.GetLogger(ctx)
-	temporalClient, err := common.GetTemporalClientFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	driver := benchDriver{
 		ctx:     ctx,
 		logger:  logger,
-		client:  temporalClient,
+		client:  a.temporalClient,
 		request: request,
 	}
 	return driver.run()
@@ -43,6 +37,8 @@ type (
 		request benchDriverActivityRequest
 	}
 )
+
+const defaultWorkflowTaskStartToCloseTimeoutDuration = 10 * time.Second
 
 func (d *benchDriver) run() error {
 	idx := 0
