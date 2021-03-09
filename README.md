@@ -41,7 +41,7 @@ easily experiment with running different sizes of Kubernetes clusters.
 Once the bench worker and target workflows are running, you can start a quick test with the following command
 
 ```
-tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-smoketest.json --wid 1
+tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-test.json --wid 1
 ```
 
 This command starts a basic Bench workflow which in turns runs the Basic workflow six times. If everything is configured correctly, you should be able to see those workflows in Web UI:
@@ -65,7 +65,7 @@ The workflow completed almost instantaneously, so there is just one data point. 
 Here is a sample test that runs a steady workload of 20 workflows per second for 10 minutes:
 
 ```
-tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-10minutes.json --wid 2
+tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-const12k.json --wid 2
 ```
 
 It runs 12,000 workflows in total. The scenario also sets the reporting interval to 10 seconds, which means that the resulting report will have data points for every 10-second interval.
@@ -99,19 +99,27 @@ Query result:
 You can convert the workflow result to a chart using charting software of your choice.
 For example, save the CSV to a file, upload it to from Google Spreadsheets, and build a chart from columns 1, 3, 5, and 6:
 
-![Execution Chart](./images/sample-chart.png)
+![Execution Chart](./images/flat-chart.png)
+
+## Variable load
+
+You can define a load profile consisting of multiple steps. For example, you can start and finish the test with low number of executions per second but have a spike of high load in the middle.
+
+![Execution Chart](./images/spike-chart.png)
+
+The above chart shows statistics from a sample run of `./scenarios/basic-spike.json`.
 
 ## Configure your own scenario
 
-You can tweak the parameters of the benchmark scenario by adjusting the JSON file. Let's take the `basic-10minutes.json` scenario as a starting point:
+You can tweak the parameters of the benchmark scenario by adjusting the JSON file. Let's take the `basic-const12k.json` scenario as a starting point:
 
 ```json
 {
-    "scenario": {
+    "steps": [{
         "count": 12000,
         "ratePerSecond": 20,
         "concurrency": 5
-    },
+    }],
     "workflow": {
         "name": "basic-workflow",
         "args": {
@@ -126,9 +134,10 @@ You can tweak the parameters of the benchmark scenario by adjusting the JSON fil
 
 Here are all the parameters you may configure:
 
-- `scenario.count` - The total number of target worflow executions for a bench run.
-- `scenario.ratePerSecond` - The maximum number of workflow executions to start per second (rate limiting). By default, no rate limiting applies.
-- `scenario.concurrency` - The number of parallel activities that bench will use to start target workflows. Can be useful when `ratePerSecond` is too high for a single activity to keep up. Defaults to `1`.
-- `workflow.name` - The name of a workflow to be used as the testing target. The bench will start `scenario.count` of these workflows.
+- `steps` - An array that defines one or more steps of the load test.
+- `steps[i].count` - The total number of target worflow executions for a bench run.
+- `steps[i].ratePerSecond` - The maximum number of workflow executions to start per second (rate limiting). By default, no rate limiting applies.
+- `steps[i].concurrency` - The number of parallel activities that bench will use to start target workflows. Can be useful when `ratePerSecond` is too high for a single activity to keep up. Defaults to `1`.
+- `workflow.name` - The name of a workflow to be used as the testing target. The bench will start `step[*].count` of these workflows.
 - `workflow.args` - Arguments to send to the target workflows. This must match the shape of the target workflow's inputs.
 - `report.intervalInSeconds` - The resolution of execution statistics in the resulting report. Defaults to 1 minute.

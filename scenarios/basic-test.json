@@ -1,8 +1,8 @@
 {
-    "scenario": {
+    "steps": [{
         "count": 6,
         "concurrency": 2
-    },
+    }],
     "workflow": {
         "name": "basic-workflow",
         "args": {

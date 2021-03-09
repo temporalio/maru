@@ -1,0 +1,22 @@
+{
+    "steps": [{
+        "count": 100,
+        "ratePerSecond": 5
+    },{
+        "count": 1000,
+        "ratePerSecond": 50,
+        "concurrency": 10
+    },{
+        "count": 100,
+        "ratePerSecond": 5
+    }],
+    "workflow": {
+        "name": "basic-workflow",
+        "args": {
+            "sequenceCount": 3
+        }
+    },
+    "report": {
+        "intervalInSeconds": 5
+    }
+}
