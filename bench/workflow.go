@@ -27,7 +27,7 @@ func Workflow(ctx workflow.Context, request benchWorkflowRequest) error {
 }
 
 type (
-	benchWorkflowRequestScenario struct {
+	benchWorkflowRequestStep struct {
 		// Count is the total number of workflows to execute across all concurrent drivers.
 		Count int `json:"count"`
 		// Concurrency defines how many driver activities should be started in parallel.
@@ -48,7 +48,7 @@ type (
 		CsvSeparator string `json:"csvSeparator"`
 	}
 	benchWorkflowRequest struct {
-		Scenario benchWorkflowRequestScenario  `json:"scenario"`
+		Steps    []benchWorkflowRequestStep    `json:"steps"`
 		Workflow benchWorkflowRequestWorkflow  `json:"workflow"`
 		Report   benchWorkflowRequestReporting `json:"report"`
 	}
@@ -74,24 +74,18 @@ func (w *benchWorkflow) run() error {
 
 	startTime := workflow.Now(w.ctx)
 
-	if w.request.Scenario.Count <= 0 {
-		return errors.Errorf("request count %d must be a positive number", w.request.Scenario.Count)
-	}
-
-	concurrency := 1
-	if w.request.Scenario.Concurrency > 0 {
-		concurrency = w.request.Scenario.Concurrency
-		if w.request.Scenario.Count%concurrency != 0 {
-			return errors.Errorf("request count %d must be a multiple of concurrency %d", w.request.Scenario.Count, concurrency)
-		}
+	if len(w.request.Steps) == 0 {
+		return errors.New("request must have at least one step defined")
 	}
 
 	if w.request.Report.IntervalInSeconds <= 0 {
 		w.request.Report.IntervalInSeconds = 60
 	}
 
-	if err := w.executeDriverActivities(concurrency); err != nil {
-		return err
+	for i, step := range w.request.Steps {
+		if err := w.executeDriverActivities(i, step); err != nil {
+			return err
+		}
 	}
 
 	res, err := w.executeMonitorActivity(startTime)
@@ -107,7 +101,15 @@ func (w *benchWorkflow) run() error {
 	return nil
 }
 
-func (w *benchWorkflow) executeDriverActivities(concurrency int) (finalErr error) {
+func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflowRequestStep) (finalErr error) {
+	concurrency := 1
+	if step.Concurrency > 0 {
+		concurrency = step.Concurrency
+		if step.Count%concurrency != 0 {
+			return errors.Errorf("request count %d must be a multiple of concurrency %d", step.Count, concurrency)
+		}
+	}
+
 	var futures []workflow.Future
 
 	for i := 0; i < concurrency; i++ {
@@ -115,9 +117,9 @@ func (w *benchWorkflow) executeDriverActivities(concurrency int) (finalErr error
 			w.withActivityOptions(),
 			"bench-DriverActivity",
 			benchDriverActivityRequest{
-				BaseID:       fmt.Sprintf("%s-%d", w.baseID, i),
-				BatchSize:    w.request.Scenario.Count / concurrency,
-				Rate:         w.request.Scenario.RatePerSecond / concurrency,
+				BaseID:       fmt.Sprintf("%s-%d-%d", w.baseID, stepIndex, i),
+				BatchSize:    step.Count / concurrency,
+				Rate:         step.RatePerSecond / concurrency,
 				WorkflowName: w.request.Workflow.Name,
 				Parameters:   w.request.Workflow.Args,
 			}))
@@ -135,6 +137,10 @@ func (w *benchWorkflow) executeDriverActivities(concurrency int) (finalErr error
 }
 
 func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histogramValue, err error) {
+	var count int
+	for _, step := range w.request.Steps {
+		count += step.Count
+	}
 	err = workflow.ExecuteActivity(
 		w.withActivityOptions(),
 		"bench-MonitorActivity",
@@ -142,7 +148,7 @@ func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histo
 			WorkflowName:      w.request.Workflow.Name,
 			StartTime:         startTime,
 			BaseID:            w.baseID,
-			Count:             w.request.Scenario.Count,
+			Count:             count,
 			IntervalInSeconds: w.request.Report.IntervalInSeconds,
 		}).Get(w.ctx, &res)
 	return
@@ -203,7 +209,7 @@ func (w *benchWorkflow) printCsv(values []histogramValue) string {
 		"Workflow Closed Rate",
 		"Backlog",
 	}, separator)
-	lines := []string { header }
+	lines := []string{header}
 	for i, v := range values {
 		line := strings.Join([]string{
 			strconv.Itoa((i + 1) * interval),

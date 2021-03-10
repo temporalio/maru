@@ -1,9 +1,9 @@
 {
-    "scenario": {
+    "steps": [{
         "count": 12000,
         "ratePerSecond": 20,
         "concurrency": 5
-    },
+    }],
     "workflow": {
         "name": "basic-workflow",
         "args": {
