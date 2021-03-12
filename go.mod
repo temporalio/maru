@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/pkg/errors v0.9.1
+	github.com/stretchr/testify v1.6.1
 	go.temporal.io/api v1.4.0
 	go.temporal.io/sdk v1.4.1
 	go.uber.org/multierr v1.6.0 // indirect

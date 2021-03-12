@@ -10,12 +10,14 @@ import (
 
 // WorkflowRequest is used for starting workflow for Basic bench workflow
 type workflowRequest struct {
-	SequenceCount                int `json:"sequenceCount"`
-	ActivityDurationMilliseconds int `json:"activityDurationMilliseconds"`
+	SequenceCount                int    `json:"sequenceCount"`
+	ActivityDurationMilliseconds int    `json:"activityDurationMilliseconds"`
+	Payload                      string `json:"payload"`
+	ResultPayload                string `json:"resultPayload"`
 }
 
 // Workflow implements a basic bench scenario to schedule activities in sequence.
-func Workflow(ctx workflow.Context, request workflowRequest) error {
+func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 
 	logger := workflow.GetLogger(ctx)
 
@@ -29,13 +31,18 @@ func Workflow(ctx workflow.Context, request workflowRequest) error {
 
 	for i := 0; i < request.SequenceCount; i++ {
 		var result string
-		err := workflow.ExecuteActivity(ctx, "basic-activity", request.ActivityDurationMilliseconds).Get(ctx, &result)
+		req := basicActivityRequest{
+			ActivityDelayMilliseconds: request.ActivityDurationMilliseconds,
+			Payload:                   request.Payload,
+			ResultPayload:             request.ResultPayload,
+		}
+		err := workflow.ExecuteActivity(ctx, "basic-activity", req).Get(ctx, &result)
 		if err != nil {
-			return err
+			return "", err
 		}
 		logger.Info("activity returned result to the workflow", "value", result)
 	}
 
 	logger.Info("basic workflow completed")
-	return nil
+	return request.ResultPayload, nil
 }

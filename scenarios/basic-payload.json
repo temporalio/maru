@@ -1,0 +1,14 @@
+{
+    "steps": [{
+        "count": 6,
+        "concurrency": 2
+    }],
+    "workflow": {
+        "name": "basic-workflow",
+        "args": {
+            "sequenceCount": 3,
+            "payload": "$RANDOM(100)",
+            "resultPayload": "$RANDOM_NORM(80,10)"
+        }
+    }
+}

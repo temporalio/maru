@@ -25,9 +25,9 @@ func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActi
 type (
 	benchDriverActivityRequest struct {
 		WorkflowName string
-		BaseID    string
-		BatchSize int
-		Rate      int
+		BaseID       string
+		BatchSize    int
+		Rate         int
 		Parameters   interface{}
 	}
 	benchDriver struct {
@@ -54,7 +54,7 @@ func (d *benchDriver) run() error {
 
 	limit := rate.Inf
 	if d.request.Rate > 0 {
-		limit = rate.Every(time.Second/time.Duration(d.request.Rate))
+		limit = rate.Every(time.Second / time.Duration(d.request.Rate))
 	}
 	limiter := rate.NewLimiter(limit, 1)
 	for i := idx; i < d.request.BatchSize; i++ {
@@ -95,7 +95,7 @@ func (d *benchDriver) execute(iterationID int) error {
 		WorkflowExecutionTimeout: 168 * time.Hour,
 		WorkflowTaskTimeout:      defaultWorkflowTaskStartToCloseTimeoutDuration,
 	}
-	_, err := d.client.ExecuteWorkflow(d.ctx, startOptions, d.request.WorkflowName, d.request.Parameters)
+	_, err := d.client.ExecuteWorkflow(d.ctx, startOptions, d.request.WorkflowName, buildPayload(d.request.Parameters))
 	if err != nil {
 		d.logger.Error("failed to start workflow", "Error", err, "ID", workflowID)
 	}
