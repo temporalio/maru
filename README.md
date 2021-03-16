@@ -141,3 +141,28 @@ Here are all the parameters you may configure:
 - `workflow.name` - The name of a workflow to be used as the testing target. The bench will start `step[*].count` of these workflows.
 - `workflow.args` - Arguments to send to the target workflows. This must match the shape of the target workflow's inputs.
 - `report.intervalInSeconds` - The resolution of execution statistics in the resulting report. Defaults to 1 minute.
+
+## Random inputs and outputs for the target workflow
+
+The size of input and output data of workflows and activities may influence the performance characteristics.
+
+The benchmark comes with a simple way to generate random payloads for your target workflows.
+Here is the definition of the workflow in `./scenarios/basic-payload.json`:
+
+```json
+"workflow": {
+    "name": "basic-workflow",
+    "args": {
+        "sequenceCount": 3,
+        "payload": "$RANDOM(100)",
+        "resultPayload": "$RANDOM_NORM(80,10)"
+    }
+}
+```
+
+Note how the `args` parameter contains two fields with "formulas" in them:
+
+- `$RANDOM(<length>)` generates a random string of the given length.
+- `$RANDOM_NORM(<mean>,<stdvar>)` generates a random string of a random length from the given normal distribution.
+
+The formulas are replaced with random values by the benchmark workflow, so each target workflow execution receives its own value.

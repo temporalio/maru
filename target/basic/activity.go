@@ -7,11 +7,17 @@ import (
 	"go.temporal.io/sdk/activity"
 )
 
+type basicActivityRequest struct {
+	ActivityDelayMilliseconds int
+	Payload                   string
+	ResultPayload             string
+}
+
 // Activity is the implementation for Basic Workflow
-func Activity(ctx context.Context, activityDelayMilliseconds int) (string, error) {
+func Activity(ctx context.Context, req basicActivityRequest) (string, error) {
 	logger := activity.GetLogger(ctx)
-	logger.Info("Activity: start", "Duration, ms", activityDelayMilliseconds)
-	time.Sleep(time.Duration(activityDelayMilliseconds) * time.Millisecond)
+	logger.Info("Activity: start", "Duration, ms", req.ActivityDelayMilliseconds)
+	time.Sleep(time.Duration(req.ActivityDelayMilliseconds) * time.Millisecond)
 	logger.Info("Activity: end")
-	return "apple", nil
+	return req.ResultPayload, nil
 }
