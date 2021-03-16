@@ -57,7 +57,7 @@ export class Bench extends pulumi.ComponentResource {
         const benchImageName = "temporal-bench-go";
         const benchImage = new docker.Image(benchImageName, {
             imageName: pulumi.interpolate`${registry.loginServer}/${benchImageName}`,
-            build: { context: "../" },
+            build: { context: "../worker/" },
             registry: {
                 server: registry.loginServer,
                 username: adminUsername,

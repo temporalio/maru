@@ -23,7 +23,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/mikhailshilkov/temporal-bench/bench"
-	"github.com/mikhailshilkov/temporal-bench/common"
 	"github.com/mikhailshilkov/temporal-bench/target/basic"
 )
 
@@ -163,7 +162,7 @@ func startNamespaceWorker(
 	serviceClient, err := client.NewClient(client.Options{
 		Namespace:    namespace,
 		HostPort:     hostPort,
-		Logger:       common.NewZapAdapter(logger),
+		Logger:       NewZapAdapter(logger),
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: tlsConfig,
 		},
@@ -172,8 +171,7 @@ func startNamespaceWorker(
 	if err != nil {
 		logger.Fatal("failed to build temporal client", zap.Error(err))
 	}
-
-	defaultWorker := constructWorker(context.Background(), serviceClient, logger, common.TaskQueue)
+	defaultWorker := constructWorker(context.Background(), serviceClient, logger, "temporal-bench")
 
 	err = defaultWorker.Start()
 	if err != nil {

@@ -19,12 +19,8 @@ DOCKER_IMAGE_TAG := $(shell whoami | tr -d " ")-local
 # Automatically gather all srcs
 ALL_SRC := $(shell find . -name "*.go")
 
-# all directories with *_test.go files in them
-# TEST_DIRS=./workflows \
-#	./activities \
-
-bins/temporal-bench: ./cmd/worker/*.go
-	go build -o bins/temporal-bench ./cmd/worker/*.go
+bins/temporal-bench: ./cmd/*.go
+	go build -o bins/temporal-bench ./cmd/*.go
 
 bins: bins/temporal-bench
 

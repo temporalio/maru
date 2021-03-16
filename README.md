@@ -20,6 +20,7 @@ FRONTEND_ADDRESS=127.0.0.1:7233
 You will need to run the bench application, which also acts as a Temporal worker. Use the makefile to do so:
 
 ```bash
+cd worker
 make run
 ```
 
