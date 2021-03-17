@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/workflow"
-
-	"github.com/mikhailshilkov/temporal-bench/common"
 )
 
 // WorkflowRequest is used for starting workflow for Basic bench workflow
@@ -16,15 +14,17 @@ type workflowRequest struct {
 	ResultPayload                string `json:"resultPayload"`
 }
 
+const taskQueue = "temporal-bench"
+
 // Workflow implements a basic bench scenario to schedule activities in sequence.
 func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 
 	logger := workflow.GetLogger(ctx)
 
-	logger.Info("basic workflow started", "activity task queue", common.TaskQueue)
+	logger.Info("basic workflow started", "activity task queue", taskQueue)
 
 	ao := workflow.ActivityOptions{
-		TaskQueue:           common.TaskQueue,
+		TaskQueue:           taskQueue,
 		StartToCloseTimeout: time.Duration(request.ActivityDurationMilliseconds)*time.Millisecond + time.Hour,
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
