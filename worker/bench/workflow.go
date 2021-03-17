@@ -103,11 +103,14 @@ func (w *benchWorkflow) run() error {
 
 func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflowRequestStep) (finalErr error) {
 	concurrency := 1
-	if step.Concurrency > 0 {
+	switch {
+	case step.Concurrency > 0:
 		concurrency = step.Concurrency
 		if step.Count%concurrency != 0 {
 			return errors.Errorf("request count %d must be a multiple of concurrency %d", step.Count, concurrency)
 		}
+	case step.RatePerSecond > 10:
+		concurrency = step.RatePerSecond / 10
 	}
 
 	var futures []workflow.Future
