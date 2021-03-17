@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: mikhailshilkov/temporal-bench
+  repository: temporalio/maru
   tag: latest
   pullPolicy: IfNotPresent
 

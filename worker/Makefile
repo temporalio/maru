@@ -1,5 +1,5 @@
 .PHONY: test bins clean
-PROJECT_ROOT = github.com/mikhailshilkov/temporal-bench
+PROJECT_ROOT = github.com/temporalio/maru
 
 # default target
 default: test

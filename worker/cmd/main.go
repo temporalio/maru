@@ -44,8 +44,8 @@ import (
 	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 
-	"github.com/mikhailshilkov/temporal-bench/bench"
-	"github.com/mikhailshilkov/temporal-bench/target/basic"
+	"github.com/temporalio/maru/bench"
+	"github.com/temporalio/maru/target/basic"
 )
 
 func main() {

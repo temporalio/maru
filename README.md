@@ -1,11 +1,11 @@
-# Temporal Bench
+# Maru - Temporal Load Simulator
 
-Benchmarking tool for [Temporal](https://github.com/temporalio/temporal/) workflows.
+Tool to generate load for [Temporal](https://github.com/temporalio/temporal/) workflows. Named after [Kobayashi Maru](https://en.m.wikipedia.org/wiki/Kobayashi_Maru).
 
 ## How It Works
 
-This repository defines a Temporal workflow which serves as a driver for benchmarking tests. Given the definition
-of a target load profile, the [`bench`](https://github.com/mikhailshilkov/temporal-bench/tree/master/workflows/bench)
+This repository defines a Temporal workflow which serves as a driver for load tests. Given the definition
+of a target load profile, the [`bench`](https://github.com/temporalio/maru/tree/master/worker/bench)
 workflow would drive the target load and collect the workflow execution statistics.
 
 ## Run the Bench Locally
@@ -27,13 +27,13 @@ make run
 ## Deploy the Bench
 
 The Bench workflow can be deployed to your target Temporal cluster, next to the workflows-to-be-benchmarked.
-You can choose to benchmark your own workflows or use the included [`basic`](https://github.com/mikhailshilkov/temporal-bench/tree/master/workflows/bench)
+You can choose to benchmark your own workflows or use the included [`basic`](https://github.com/temporalio/maru/tree/master/worker/target/basic)
 workflow for starters.
 
-The provided [Helm chart](https://github.com/mikhailshilkov/temporal-bench/tree/master/helm-chart) can help you deploy
+The provided [Helm chart](https://github.com/temporalio/maru/tree/master/helm-chart) can help you deploy
 the Bench application to your existing Kubernetes cluster.
 
-The provided [Pulumi program](https://github.com/mikhailshilkov/temporal-bench/tree/master/pulumi) shows an example
+The provided [Pulumi program](https://github.com/temporalio/maru/tree/master/pulumi) shows an example
 of deploying a new Azure Kubernetes Cluster, the Temporal server, and the bench from scratch. This way, you can
 easily experiment with running different sizes of Kubernetes clusters.
 

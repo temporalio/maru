@@ -1,4 +1,4 @@
-module github.com/mikhailshilkov/temporal-bench
+module github.com/temporalio/maru
 
 go 1.16
 
