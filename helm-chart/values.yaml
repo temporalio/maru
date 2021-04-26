@@ -5,7 +5,8 @@
 replicaCount: 1
 
 image:
-  repository: temporalio/maru
+  # Build your Maru image based on worker/Dockerfile and put its name and tag below
+  repository: <your-maru-image>
   tag: latest
   pullPolicy: IfNotPresent
 
