@@ -19,11 +19,16 @@ export interface ClusterArgs {
     principalId: pulumi.Input<string>;
 }
 
+export interface ServerArgs {
+    numHistoryShards?: number;
+}
+
 export interface TemporalArgs {
     resourceGroupName: pulumi.Input<string>;
     version: string;
     storage: CassandraArgs | MySqlArgs;
     cluster: ClusterArgs;
+    server: ServerArgs;
     visibility: "default" | "elasticsearch";
 }
 
@@ -71,6 +76,13 @@ export class Temporal extends pulumi.ComponentResource {
                     type: "LoadBalancer",
                 }
             },
+            server: {
+                config: {                    
+                },
+                nodeSelector: {
+                    agentpool: "agentpool",
+                },
+            },
             kafka: { enabled: false },
         };
 
@@ -78,36 +90,36 @@ export class Temporal extends pulumi.ComponentResource {
             chartValues.elasticsearch = { enabled: false };
         }
 
+        if (args.server.numHistoryShards) {
+            chartValues.server.config.numHistoryShards = args.server.numHistoryShards;
+        }
+
         if (args.storage.type == "mysql") {
-            chartValues.server = {
-                config: {
-                    persistence: {
-                        default: {
-                            driver: "sql",
-                            sql: {
-                                driver: "mysql",
-                                host: args.storage.hostName,
-                                port: 3306,
-                                database: "temporal",
-                                user: args.storage.login,
-                                password: args.storage.password,
-                                maxConns: 20,
-                                maxConnLifetime: "1h",
-                            },
-                        },
-                        visibility: {
-                            driver: "sql",
-                            sql: {
-                                driver: "mysql",
-                                host: args.storage.hostName,
-                                port: 3306,
-                                database: "temporal_visibility",
-                                user: args.storage.login,
-                                password: args.storage.password,
-                                maxConns: 20,
-                                maxConnLifetime: "1h",
-                            },
-                        },
+            chartValues.server.config.persistence = {
+                default: {
+                    driver: "sql",
+                    sql: {
+                        driver: "mysql",
+                        host: args.storage.hostName,
+                        port: 3306,
+                        database: "temporal",
+                        user: args.storage.login,
+                        password: args.storage.password,
+                        maxConns: 20,
+                        maxConnLifetime: "1h",
+                    },
+                },
+                visibility: {
+                    driver: "sql",
+                    sql: {
+                        driver: "mysql",
+                        host: args.storage.hostName,
+                        port: 3306,
+                        database: "temporal_visibility",
+                        user: args.storage.login,
+                        password: args.storage.password,
+                        maxConns: 20,
+                        maxConnLifetime: "1h",
                     },
                 },
             };

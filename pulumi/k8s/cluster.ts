@@ -33,6 +33,14 @@ export interface ClusterArgs {
     kubernetesVersion: pulumi.Input<string>;
     vmSize: pulumi.Input<string>;
     vmCount: pulumi.Input<number>;
+    nodePools: NodePoolArgs[];
+}
+
+export interface NodePoolArgs {
+    name: string;
+    target: pulumi.Input<string>;
+    vmSize: pulumi.Input<string>;
+    vmCount: pulumi.Input<number>;
 }
 
 export class AksCluster extends pulumi.ComponentResource {
@@ -43,7 +51,9 @@ export class AksCluster extends pulumi.ComponentResource {
         super("my:example:AksCluster", name, args, undefined);
 
         // Create an AD service principal
-        const adApp = new azuread.Application("aks", undefined, { parent: this });
+        const adApp = new azuread.Application("aks", {
+            displayName: "TemporalAKS",
+        }, { parent: this });
         const adSp = new azuread.ServicePrincipal("aksSp", {
             applicationId: adApp.applicationId,
         }, {parent: this});
@@ -105,7 +115,23 @@ export class AksCluster extends pulumi.ComponentResource {
                 clientId: adApp.applicationId,
                 secret: adSpPassword.value,
             },
-        }, {parent: this});  
+            tags: {
+                Owner: "mikhail",
+            }
+        }, {parent: this});
+
+        const pools = args.nodePools.map(p =>
+            new containerservice.AgentPool(p.name, {
+                resourceGroupName: args.resourceGroupName,
+                resourceName: cluster.name,
+                count: p.vmCount,
+                osType: "Linux",
+                vmSize: p.vmSize,
+                nodeLabels: {
+                    target: p.target,
+                },
+                nodeTaints: [pulumi.interpolate`target=${p.target}:NoSchedule`],
+            }));
         
         const creds = pulumi.all([cluster.name, args.resourceGroupName]).apply(([clusterName, rgName]) => {
             return containerservice.listManagedClusterUserCredentials({
