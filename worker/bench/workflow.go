@@ -23,12 +23,18 @@
 package bench
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/temporal"
@@ -82,6 +88,14 @@ type (
 		Backlog   int `json:"backlog"`
 	}
 
+	metricValue struct {
+		Persistence    *int `json:"persistence"`
+		HistoryService *int `json:"historyService"`
+		PersistenceCpu *int `json:"persistenceCpu"`
+		HistoryCpu     *int `json:"historyCpu"`
+		HistoryMemory  *float64 `json:"historyMemory"`
+	}
+
 	benchWorkflow struct {
 		ctx      workflow.Context
 		logger   log.Logger
@@ -115,7 +129,7 @@ func (w *benchWorkflow) run() error {
 		return err
 	}
 
-	if err = w.setupQueries(res); err != nil {
+	if err = w.setupQueries(res, startTime); err != nil {
 		return err
 	}
 
@@ -179,7 +193,7 @@ func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histo
 	return
 }
 
-func (w *benchWorkflow) setupQueries(res []histogramValue) error {
+func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) error {
 	if err := workflow.SetQueryHandler(w.ctx, "histogram", func(input []byte) (string, error) {
 		return w.printJson(res), nil
 	}); err != nil {
@@ -187,7 +201,31 @@ func (w *benchWorkflow) setupQueries(res []histogramValue) error {
 	}
 
 	if err := workflow.SetQueryHandler(w.ctx, "histogram_csv", func(input []byte) (string, error) {
-		return w.printCsv(res), nil
+		return w.printHistogramCsv(res), nil
+	}); err != nil {
+		return err
+	}
+
+	if err := workflow.SetQueryHandler(w.ctx, "metrics", func(input []byte) (string, error) {
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+		values, err := w.collectMetrics(startTime, endTime)
+		if err != nil {
+			return "", err
+		}
+
+		return w.printJson(values), nil
+	}); err != nil {
+		return err
+	}
+
+	if err := workflow.SetQueryHandler(w.ctx, "metrics_csv", func(input []byte) (string, error) {
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+		values, err := w.collectMetrics(startTime, endTime)
+		if err != nil {
+			return "", err
+		}
+
+		return w.printMetricsCsv(values), nil
 	}); err != nil {
 		return err
 	}
@@ -210,7 +248,126 @@ func (w *benchWorkflow) withActivityOptions() workflow.Context {
 	return workflow.WithActivityOptions(w.ctx, ao)
 }
 
-func (w *benchWorkflow) printJson(values []histogramValue) string {
+func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricValue, error) {
+	updates, err := w.queryPrometheusHistogram("persistence_latency_bucket{type='history'}", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query UpdateWorkflowExecution")
+	}
+
+	appends, err := w.queryPrometheusHistogram("persistence_latency_bucket{type='history'}", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query AppendHistoryNodes")
+	}
+
+	services, err := w.queryPrometheusHistogram("service_latency_bucket{type='history'}", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query service latency")
+	}
+
+	historyCpus, err := w.queryPrometheusValues("sum(rate(container_cpu_usage_seconds_total{container=\"temporal-history\"}[2m]))", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query history CPU")
+	}
+
+	historyMem, err := w.queryPrometheusValues("max(container_memory_working_set_bytes{container=\"temporal-history\"})", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query history memory")
+	}
+
+	persistenceCpus, err := w.queryPrometheusValues("sum(rate(container_cpu_usage_seconds_total{container=\"cass-cassandra\"}[2m]))", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query history CPU")
+	}
+
+	values := make([]metricValue, len(updates))
+	convert := func(f float64) *int {
+		if math.IsNaN(f) {
+			return nil
+		}
+		res := int(f*1000)
+		return &res
+	}
+	for i, update := range updates {
+		storage := update
+		if len(appends) > i {
+			storage = math.Max(update, appends[i])
+		}
+		value := metricValue{Persistence: convert(storage)}
+		if len(services) > i {
+			value.HistoryService = convert(services[i])
+		}
+		if len(persistenceCpus) > i {
+			value.PersistenceCpu = convert(persistenceCpus[i])
+		}
+		if len(historyCpus) > i {
+			value.HistoryCpu = convert(historyCpus[i])
+		}
+		if len(historyMem) > i {
+			value.HistoryMemory = &historyMem[i]
+		}
+		values[i] = value
+	}
+	return values, nil
+}
+
+func (w *benchWorkflow) queryPrometheusValues(query string, startTime, endTime time.Time) ([]float64, error) {
+	matrix, err := w.queryPrometheus(query, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var res []float64
+	for _, sample := range *matrix {
+		for _, value := range sample.Values {
+			res = append(res, float64(value.Value))
+		}
+	}
+	return res, nil
+}
+
+func (w *benchWorkflow) queryPrometheusHistogram(metric string, startTime, endTime time.Time) ([]float64, error) {
+	query := fmt.Sprintf("histogram_quantile(0.95,sum(rate(%s[5m])) by (le))", metric)
+	matrix, err := w.queryPrometheus(query, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var res []float64
+	for _, sample := range *matrix {
+		for _, value := range sample.Values {
+			res = append(res, float64(value.Value))
+		}
+	}
+	return res, nil
+}
+
+func (w *benchWorkflow) queryPrometheus(query string, startTime, endTime time.Time) (*model.Matrix, error) {
+	client, err := api.NewClient(api.Config{
+		Address: "http://prometheus-server",
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "creating API client")
+	}
+	v1api := v1.NewAPI(client)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	result, _, err := v1api.QueryRange(ctx, query, v1.Range{
+		Start: startTime,
+		End:   endTime,
+		Step:  time.Duration(w.request.Report.IntervalInSeconds) * time.Second,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "query %q", query)
+	}
+	matrix, ok := result.(model.Matrix)
+	if !ok {
+		return nil, errors.New("query yielded no results")
+	}
+
+	return &matrix, nil
+}
+
+func (w *benchWorkflow) printJson(values interface{}) string {
 	b, err := json.Marshal(values)
 	if err != nil {
 		return errors.Wrapf(err, "printing JSON").Error()
@@ -218,7 +375,7 @@ func (w *benchWorkflow) printJson(values []histogramValue) string {
 	return string(b)
 }
 
-func (w *benchWorkflow) printCsv(values []histogramValue) string {
+func (w *benchWorkflow) printHistogramCsv(values []histogramValue) string {
 	separator := ";"
 	if w.request.Report.CsvSeparator != "" {
 		separator = w.request.Report.CsvSeparator
@@ -245,6 +402,55 @@ func (w *benchWorkflow) printCsv(values []histogramValue) string {
 			strconv.Itoa(v.Closed),
 			fmt.Sprintf("%f", float32(v.Closed)/float32(interval)),
 			strconv.Itoa(v.Backlog),
+		}, separator)
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (w *benchWorkflow) printMetricsCsv(values []metricValue) string {
+	separator := ";"
+	if w.request.Report.CsvSeparator != "" {
+		separator = w.request.Report.CsvSeparator
+	}
+	interval := w.request.Report.IntervalInSeconds
+	header := strings.Join([]string{
+		"Time (seconds)",
+		"Persistence Latency (ms)",
+		"History Service Latency (ms)",
+		"Persistence CPU (mcores)",
+		"History Service CPU (mcores)",
+		"History Service Memory Working Set (MB)",
+	}, separator)
+	lines := []string{header}
+	for i, v := range values {
+		var pv string
+		if v.Persistence != nil {
+			pv = strconv.Itoa(*v.Persistence)
+		}
+		var hv string
+		if v.HistoryService != nil {
+			hv = strconv.Itoa(*v.HistoryService)
+		}
+		var pcpu string
+		if v.PersistenceCpu != nil {
+			pcpu = strconv.Itoa(*v.PersistenceCpu)
+		}
+		var hcpu string
+		if v.HistoryCpu != nil {
+			hcpu = strconv.Itoa(*v.HistoryCpu)
+		}
+		var hmem string
+		if v.HistoryMemory != nil {
+			hmem = strconv.Itoa(int(*v.HistoryMemory / 1048576.0))
+		}
+		line := strings.Join([]string{
+			strconv.Itoa((i + 1) * interval),
+			pv,
+			hv,
+			pcpu,
+			hcpu,
+			hmem,
 		}, separator)
 		lines = append(lines, line)
 	}
