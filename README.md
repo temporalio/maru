@@ -71,6 +71,8 @@ tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./s
 
 It runs 12,000 workflows in total. The scenario also sets the reporting interval to 10 seconds, which means that the resulting report will have data points for every 10-second interval.
 
+## Retrieve the statistics of processing
+
 Execute the `histogram` query to retrieve the execution statistics
 
 ```
@@ -101,6 +103,24 @@ You can convert the workflow result to a chart using charting software of your c
 For example, save the CSV to a file, upload it to from Google Spreadsheets, and build a chart from columns 1, 3, 5, and 6:
 
 ![Execution Chart](./images/flat-chart.png)
+
+## Retrieve the metrics
+
+If you have Prometheus installed and configured to listen at `http://prometheus-server`,
+you can use an additional query to retrieve the metrics of storage and History service utilization:
+
+```
+tctl wf query --qt metrics_csv --wid 2
+Query result:
+[Time (seconds);Persistence Latency (ms);History Service Latency (ms);Persistence CPU (mcores);History Service CPU (mcores);History Service Memory Working Set (MB)
+60;8;456;494;418;27
+120;9;479;1733;970;72
+180;9;481;2537;996;80
+240;9;481;3623;978;85
+300;9;482;3652;949;87
+360;9;477;3462;973;92
+420;9;470;2522;636;91]
+```
 
 ## Variable load
 
