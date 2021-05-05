@@ -1,3 +1,0 @@
-name: tempora-azure-aks-helm
-runtime: nodejs
-description: A minimal Azure AKS TypeScript Pulumi program to provision a Temporal cluster with a Helm chart

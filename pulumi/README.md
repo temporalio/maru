@@ -13,27 +13,8 @@ The example uses [Pulumi](https://www.pulumi.com) to deploy several Azure and Te
 - Temporal Bench and all its dependencies using the Bench Helm chart
 - Basic workflow as a test target
 
-## Running the App
+The deployment is structured as three Pulumi projects:
 
-1.  Create a new stack:
-
-    ```
-    $ pulumi stack init dev
-    ```
-
-1.  Login to Azure CLI (you will be prompted to do this during deployment if you forget this step):
-
-    ```
-    $ az login
-    ```
-
-1.  Restore NPM dependencies:
-
-    ```
-    $ npm install
-    ```
-
-1.  Run `pulumi up` to preview and deploy changes.
-
-
-1.  Follow the instructions in the [top-level README](../README.md) to run the benchmark.
+1. `k8s` deploys an AKS cluster with three node pools and third-party products to it (Cassandra, Elasticsearch, Prometheus, Grafana).
+2. `temporal` deploys Temporal services.
+3. `bench` deploys the Maru benchmark worker.
