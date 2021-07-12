@@ -144,7 +144,8 @@ You can tweak the parameters of the benchmark scenario by adjusting the JSON fil
     "workflow": {
         "name": "basic-workflow",
         "args": {
-            "sequenceCount": 3
+            "sequenceCount": 3,
+            "parallelCount": 1
         }
     },
     "report": {

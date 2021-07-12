@@ -193,22 +193,45 @@ func startNamespaceWorker(
 	if err != nil {
 		logger.Fatal("failed to build temporal client", zap.Error(err))
 	}
-	defaultWorker := constructWorker(context.Background(), serviceClient, logger, "temporal-bench")
 
-	err = defaultWorker.Start()
-	if err != nil {
-		logger.Fatal("Unable to start default worker", zap.Error(err))
+	workersString := getEnvOrDefaultString(logger, "RUN_WORKERS", "bench,basic,basic-act")
+	workers := strings.Split(workersString, ",")
+
+	for _, workerName := range workers {
+		var worker worker.Worker
+		switch workerName {
+		case "bench":
+			worker = constructBenchWorker(context.Background(), serviceClient, logger, "temporal-bench")
+		case "basic":
+			worker = constructBasicWorker(context.Background(), serviceClient, logger, "temporal-basic")
+		case "basic-act":
+			worker = constructBasicActWorker(context.Background(), serviceClient, logger, "temporal-basic-act")
+		default:
+			panic(fmt.Sprintf("unknown worker %q", worker))
+		}
+		err = worker.Start()
+		if err != nil {
+			logger.Fatal("Unable to start worker " + workerName, zap.Error(err))
+		}
 	}
 }
 
-func constructWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
+func constructBenchWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
-
-	w.RegisterWorkflowWithOptions(basic.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
-	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
-
 	w.RegisterWorkflowWithOptions(bench.Workflow, workflow.RegisterOptions{Name: "bench-workflow"})
 	w.RegisterActivityWithOptions(bench.NewActivities(serviceClient), activity.RegisterOptions{Name: "bench-"})
+	return w
+}
+
+func constructBasicWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
+	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
+	w.RegisterWorkflowWithOptions(basic.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
+	return w
+}
+
+func constructBasicActWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
+	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
+	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
 	return w
 }
 

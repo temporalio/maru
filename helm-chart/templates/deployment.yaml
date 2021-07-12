@@ -65,6 +65,8 @@ spec:
               value: "{{ .Values.tests.numDecisionPollers }}"
             - name: SKIP_NAMESPACE_CREATION
               value: "{{ .Values.tests.skipNamespaceCreation }}"
+            - name: RUN_WORKERS
+              value: "{{ .Values.workers }}"
 
       {{- with .Values.nodeSelector }}
       nodeSelector:

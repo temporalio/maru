@@ -25,7 +25,7 @@ package basic
 import (
 	"context"
 	"time"
-
+	
 	"go.temporal.io/sdk/activity"
 )
 
@@ -39,7 +39,9 @@ type basicActivityRequest struct {
 func Activity(ctx context.Context, req basicActivityRequest) (string, error) {
 	logger := activity.GetLogger(ctx)
 	logger.Info("Activity: start", "Duration, ms", req.ActivityDelayMilliseconds)
-	time.Sleep(time.Duration(req.ActivityDelayMilliseconds) * time.Millisecond)
+	if req.ActivityDelayMilliseconds > 0 {
+		time.Sleep(time.Duration(req.ActivityDelayMilliseconds) * time.Millisecond)
+	}
 	logger.Info("Activity: end")
 	return req.ResultPayload, nil
 }

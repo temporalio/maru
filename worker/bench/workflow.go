@@ -237,7 +237,7 @@ func (w *benchWorkflow) withActivityOptions() workflow.Context {
 	ao := workflow.ActivityOptions{
 		HeartbeatTimeout:    60 * time.Second,
 		StartToCloseTimeout: w.deadline.Sub(workflow.Now(w.ctx)),
-		TaskQueue:           taskQueue,
+		TaskQueue:           benchTaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:        50 * time.Millisecond,
 			BackoffCoefficient:     1.2,

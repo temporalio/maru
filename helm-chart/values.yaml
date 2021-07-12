@@ -10,6 +10,9 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+# Which application workers to run
+workers: "bench,basic,basic-act"
+
 tests:
   namespaceName: benchtest
   namespaceRetention: "1"

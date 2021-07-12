@@ -31,12 +31,13 @@ import (
 // WorkflowRequest is used for starting workflow for Basic bench workflow
 type workflowRequest struct {
 	SequenceCount                int    `json:"sequenceCount"`
+	ParallelCount                int    `json:"parallelCount"`
 	ActivityDurationMilliseconds int    `json:"activityDurationMilliseconds"`
 	Payload                      string `json:"payload"`
 	ResultPayload                string `json:"resultPayload"`
 }
 
-const taskQueue = "temporal-bench"
+const taskQueue = "temporal-basic-act"
 
 // Workflow implements a basic bench scenario to schedule activities in sequence.
 func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
@@ -47,22 +48,38 @@ func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 
 	ao := workflow.ActivityOptions{
 		TaskQueue:           taskQueue,
-		StartToCloseTimeout: time.Duration(request.ActivityDurationMilliseconds)*time.Millisecond + time.Hour,
+		StartToCloseTimeout: time.Duration(request.ActivityDurationMilliseconds)*time.Millisecond + 10 * time.Minute,
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
+	parallelCount := 1
+	if request.ParallelCount > 1 {
+		parallelCount = request.ParallelCount
+	}
+
 	for i := 0; i < request.SequenceCount; i++ {
-		var result string
 		req := basicActivityRequest{
 			ActivityDelayMilliseconds: request.ActivityDurationMilliseconds,
 			Payload:                   request.Payload,
 			ResultPayload:             request.ResultPayload,
 		}
-		err := workflow.ExecuteActivity(ctx, "basic-activity", req).Get(ctx, &result)
-		if err != nil {
-			return "", err
+
+		futures := make([]workflow.Future, parallelCount)
+		for i := 0; i < parallelCount; i++ {
+			futures[i] = workflow.ExecuteActivity(ctx, "basic-activity", req)
 		}
-		logger.Info("activity returned result to the workflow", "value", result)
+
+		allResults := make([]string, parallelCount)
+		for i := 0; i < parallelCount; i++ {
+			var result string
+			err := futures[i].Get(ctx, &result)
+			if err != nil {
+				return "", err
+			}
+			allResults[i] = result
+		}
+
+		logger.Info("activity returned result to the workflow", "value", allResults)
 	}
 
 	logger.Info("basic workflow completed")

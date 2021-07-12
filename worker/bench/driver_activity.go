@@ -113,8 +113,8 @@ func (d *benchDriver) execute(iterationID int) error {
 	workflowID := fmt.Sprintf("%s-%s-%d", d.request.WorkflowName, d.request.BaseID, iterationID)
 	startOptions := client.StartWorkflowOptions{
 		ID:                       workflowID,
-		TaskQueue:                taskQueue,
-		WorkflowExecutionTimeout: 168 * time.Hour,
+		TaskQueue:                targetTaskQueue,
+		WorkflowExecutionTimeout: 30 * time.Minute,
 		WorkflowTaskTimeout:      defaultWorkflowTaskStartToCloseTimeoutDuration,
 	}
 	_, err := d.client.ExecuteWorkflow(d.ctx, startOptions, d.request.WorkflowName, buildPayload(d.request.Parameters))
