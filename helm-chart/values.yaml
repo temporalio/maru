@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   # Build your Maru image based on worker/Dockerfile and put its name and tag below
-  repository: <your-maru-image>
+  repository: ghcr.io/temporalio/maru
   tag: latest
   pullPolicy: IfNotPresent
 
