@@ -17,6 +17,14 @@ NAMESPACE=default
 FRONTEND_ADDRESS=127.0.0.1:7233
 ```
 
+If you need to override the default containers for the metric collection and/or the prometheus endpoint:
+
+```
+PROMETHEUS_SERVER_ENDPOINT='http://prometheus-server:9090' # defaults to 'http://localhost:9090'
+TEMPORAL_STATE_CONTAINER=cassandra # defaults to cassandra
+TEMPORAL_VISIBILITY_CONTAINER=elasticsearch # defaults to cassandra
+```
+
 You will need to run the bench application, which also acts as a Temporal worker. Use the makefile to do so:
 
 ```bash

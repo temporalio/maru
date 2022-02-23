@@ -25,13 +25,14 @@ package bench
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"go.temporal.io/api/filter/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
-	"strings"
-	"time"
 )
 
 func (a *Activities) MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {
@@ -79,7 +80,7 @@ func (m *benchMonitor) run() ([]histogramValue, error) {
 
 	hist := m.calculateHistogram(stats)
 
-	m.logger.Info("!!! BENCH TEST COMPLETED !!!", "duration", time.Now().Sub(startTime))
+	m.logger.Info("!!! BENCH TEST COMPLETED !!!", "duration", time.Since(startTime))
 	return hist, nil
 }
 
@@ -92,7 +93,7 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflo
 			return nil, err
 		}
 
-		totalWaitDuration := time.Now().Sub(waitStartTime)
+		totalWaitDuration := time.Since(waitStartTime)
 
 		if complete {
 			stats := m.collectWorkflowTimings()

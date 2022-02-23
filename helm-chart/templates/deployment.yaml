@@ -40,6 +40,7 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          
           env:
             - name: NAMESPACE
               value: "{{ .Values.tests.namespaceName }}"
@@ -67,7 +68,16 @@ spec:
               value: "{{ .Values.tests.skipNamespaceCreation }}"
             - name: RUN_WORKERS
               value: "{{ .Values.workers }}"
-
+            - name: TEMPORAL_STATE_CONTAINER
+              value: "{{ .Values.tests.temporalStateContainer }}"
+            - name: TEMPORAL_VISIBILITY_CONTAINER
+              value: "{{ .Values.tests.temporalVisibilityContainer }}"
+            - name: PROMETHEUS_SERVER_ENDPOINT
+              value: "{{ .Values.tests.prometheusServerEndpoint }}"
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+              {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -78,5 +88,9 @@ spec:
     {{- end }}
     {{- with .Values.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.volumes }}
+      volumes:
         {{- toYaml . | nindent 8 }}
     {{- end }}

@@ -31,8 +31,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -40,31 +38,35 @@ import (
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 
 	"github.com/temporalio/maru/bench"
+	"github.com/temporalio/maru/common"
 	"github.com/temporalio/maru/target/basic"
 )
 
 func main() {
-	logger, err := zap.NewDevelopment()
+	zapLogger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
 	}
 
+	logger := NewZapAdapter(zapLogger)
+
 	logger.Info("Zap logger created")
-	namespace := getEnvOrDefaultString(logger, "NAMESPACE", client.DefaultNamespace)
-	hostPort := getEnvOrDefaultString(logger, "FRONTEND_ADDRESS", client.DefaultHostPort)
-	skipNamespaceCreation := getEnvOrDefaultBool(logger, "SKIP_NAMESPACE_CREATION", false)
+	namespace := common.GetEnvOrDefaultString(logger, "NAMESPACE", client.DefaultNamespace)
+	hostPort := common.GetEnvOrDefaultString(logger, "FRONTEND_ADDRESS", client.DefaultHostPort)
+	skipNamespaceCreation := common.GetEnvOrDefaultBool(logger, "SKIP_NAMESPACE_CREATION", false)
 
 	tlsConfig, err := getTLSConfig(hostPort, logger)
 	if err != nil {
-		logger.Fatal("failed to build tls config", zap.Error(err))
+		logger.Error("failed to build tls config", zap.Error(err))
 	}
 
-	stickyCacheSize := getEnvOrDefaultInt(logger, "STICKY_CACHE_SIZE", 2048)
+	stickyCacheSize := common.GetEnvOrDefaultInt(logger, "STICKY_CACHE_SIZE", 2048)
 	worker.SetStickyWorkflowCacheSize(stickyCacheSize)
 
 	startNamespaceWorker(logger, namespace, hostPort, tlsConfig, skipNamespaceCreation)
@@ -74,7 +76,7 @@ func main() {
 	select {}
 }
 
-func createNamespaceIfNeeded(logger *zap.Logger, namespace string, hostPort string, tlsConfig *tls.Config) {
+func createNamespaceIfNeeded(logger log.Logger, namespace string, hostPort string, tlsConfig *tls.Config) {
 	logger.Info("Creating namespace", zap.String("namespace", namespace), zap.String("hostPort", hostPort))
 
 	createNamespace := func() error {
@@ -122,56 +124,8 @@ func createNamespaceIfNeeded(logger *zap.Logger, namespace string, hostPort stri
 	}
 }
 
-func getEnvOrDefaultString(logger *zap.Logger, envVarName string, defaultValue string) string {
-	value := os.Getenv(envVarName)
-	if value == "" {
-		logger.Info(fmt.Sprintf("'%s' env variable not set, defaulting to '%s'", envVarName, defaultValue))
-		value = defaultValue
-	} else {
-		logger.Info(fmt.Sprintf("'%s' env variable read as '%s'", envVarName, value))
-	}
-	return value
-}
-
-func getEnvOrDefaultBool(logger *zap.Logger, envVarName string, defaultValue bool) bool {
-	result := defaultValue
-	envValue := os.Getenv(envVarName)
-	switch strings.ToLower(envValue) {
-	case "true":
-		logger.Info(fmt.Sprintf("'%s' env variable set to '%s'", envVarName, envValue))
-		result = true
-	case "false":
-		logger.Info(fmt.Sprintf("'%s' env variable set to '%s'", envVarName, envValue))
-		result = false
-	case "":
-		logger.Info(fmt.Sprintf("'%s' env variable not set, defaulting to '%t'", envVarName, defaultValue))
-	default:
-		logger.Info(fmt.Sprintf("'%s' env variable set to unknown value '%s', defaulting to '%t'", envVarName, envValue, result))
-	}
-	return result
-}
-
-func getEnvOrDefaultInt(logger *zap.Logger, envVarName string, defaultValue int) int {
-	value := defaultValue
-	envValue := os.Getenv(envVarName)
-
-	if envValue == "" {
-		logger.Info(fmt.Sprintf("'%s' env variable not set, defaulting to '%v'", envVarName, defaultValue))
-		value = defaultValue
-	} else {
-		parsedValue, err := strconv.Atoi(envValue)
-		if err != nil {
-			logger.Info(fmt.Sprintf("error parsing '%s' env variable, defaulting to '%v'. err: %v", envVarName, defaultValue, err))
-		} else {
-			value = parsedValue
-		}
-	}
-
-	return value
-}
-
 func startNamespaceWorker(
-	logger *zap.Logger,
+	logger log.Logger,
 	namespace string,
 	hostPort string,
 	tlsConfig *tls.Config,
@@ -182,19 +136,19 @@ func startNamespaceWorker(
 	}
 
 	serviceClient, err := client.NewClient(client.Options{
-		Namespace:    namespace,
-		HostPort:     hostPort,
-		Logger:       NewZapAdapter(logger),
+		Namespace: namespace,
+		HostPort:  hostPort,
+		Logger:    logger,
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: tlsConfig,
 		},
 	})
 
 	if err != nil {
-		logger.Fatal("failed to build temporal client", zap.Error(err))
+		logger.Error("failed to build temporal client", zap.Error(err))
 	}
 
-	workersString := getEnvOrDefaultString(logger, "RUN_WORKERS", "bench,basic,basic-act")
+	workersString := common.GetEnvOrDefaultString(logger, "RUN_WORKERS", "bench,basic,basic-act")
 	workers := strings.Split(workersString, ",")
 
 	for _, workerName := range workers {
@@ -211,32 +165,32 @@ func startNamespaceWorker(
 		}
 		err = worker.Start()
 		if err != nil {
-			logger.Fatal("Unable to start worker " + workerName, zap.Error(err))
+			logger.Error("Unable to start worker "+workerName, zap.Error(err))
 		}
 	}
 }
 
-func constructBenchWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
+func constructBenchWorker(ctx context.Context, serviceClient client.Client, logger log.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 	w.RegisterWorkflowWithOptions(bench.Workflow, workflow.RegisterOptions{Name: "bench-workflow"})
 	w.RegisterActivityWithOptions(bench.NewActivities(serviceClient), activity.RegisterOptions{Name: "bench-"})
 	return w
 }
 
-func constructBasicWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
+func constructBasicWorker(ctx context.Context, serviceClient client.Client, logger log.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 	w.RegisterWorkflowWithOptions(basic.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
 	return w
 }
 
-func constructBasicActWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
+func constructBasicActWorker(ctx context.Context, serviceClient client.Client, logger log.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
 	return w
 }
 
-func buildWorkerOptions(ctx context.Context, logger *zap.Logger) worker.Options {
-	numDecisionPollers := getEnvOrDefaultInt(logger, "NUM_DECISION_POLLERS", 50)
+func buildWorkerOptions(ctx context.Context, logger log.Logger) worker.Options {
+	numDecisionPollers := common.GetEnvOrDefaultInt(logger, "NUM_DECISION_POLLERS", 50)
 	logger.Info("Using env config for NUM_DECISION_POLLERS", zap.Int("NUM_DECISION_POLLERS", numDecisionPollers))
 
 	workerOptions := worker.Options{
@@ -251,19 +205,19 @@ func buildWorkerOptions(ctx context.Context, logger *zap.Logger) worker.Options 
 	return workerOptions
 }
 
-func getTLSConfig(hostPort string, logger *zap.Logger) (*tls.Config, error) {
+func getTLSConfig(hostPort string, logger log.Logger) (*tls.Config, error) {
 	host, _, parseErr := net.SplitHostPort(hostPort)
 	if parseErr != nil {
 		return nil, fmt.Errorf("unable to parse hostport properly: %+v", parseErr)
 	}
 
-	caCertData := getEnvOrDefaultString(logger, "TLS_CA_CERT_DATA", "")
-	clientCertData := getEnvOrDefaultString(logger, "TLS_CLIENT_CERT_DATA", "")
-	clientCertPrivateKeyData := getEnvOrDefaultString(logger, "TLS_CLIENT_CERT_PRIVATE_KEY_DATA", "")
-	caCertFile := getEnvOrDefaultString(logger, "TLS_CA_CERT_FILE", "")
-	clientCertFile := getEnvOrDefaultString(logger, "TLS_CLIENT_CERT_FILE", "")
-	clientCertPrivateKeyFile := getEnvOrDefaultString(logger, "TLS_CLIENT_CERT_PRIVATE_KEY_FILE", "")
-	enableHostVerification := getEnvOrDefaultBool(logger, "TLS_ENABLE_HOST_VERIFICATION", false)
+	caCertData := common.GetEnvOrDefaultString(logger, "TLS_CA_CERT_DATA", "")
+	clientCertData := common.GetEnvOrDefaultString(logger, "TLS_CLIENT_CERT_DATA", "")
+	clientCertPrivateKeyData := common.GetEnvOrDefaultString(logger, "TLS_CLIENT_CERT_PRIVATE_KEY_DATA", "")
+	caCertFile := common.GetEnvOrDefaultString(logger, "TLS_CA_CERT_FILE", "")
+	clientCertFile := common.GetEnvOrDefaultString(logger, "TLS_CLIENT_CERT_FILE", "")
+	clientCertPrivateKeyFile := common.GetEnvOrDefaultString(logger, "TLS_CLIENT_CERT_PRIVATE_KEY_FILE", "")
+	enableHostVerification := common.GetEnvOrDefaultBool(logger, "TLS_ENABLE_HOST_VERIFICATION", false)
 
 	caBytes, err := getTLSBytes(caCertFile, caCertData)
 	if err != nil {

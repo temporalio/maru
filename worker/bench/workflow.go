@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"github.com/temporalio/maru/common"
 
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/temporal"
@@ -89,10 +90,12 @@ type (
 	}
 
 	metricValue struct {
-		Persistence    *int `json:"persistence"`
-		HistoryService *int `json:"historyService"`
-		PersistenceCpu *int `json:"persistenceCpu"`
-		HistoryCpu     *int `json:"historyCpu"`
+		Persistence    *int     `json:"persistence"`
+		Visibility     *int     `json:"visibility"`
+		HistoryService *int     `json:"historyService"`
+		PersistenceCpu *int     `json:"persistenceCpu"`
+		VisibilityCpu  *int     `json:"visibilityCpu"`
+		HistoryCpu     *int     `json:"historyCpu"`
 		HistoryMemory  *float64 `json:"historyMemory"`
 	}
 
@@ -207,7 +210,7 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 	}
 
 	if err := workflow.SetQueryHandler(w.ctx, "metrics", func(input []byte) (string, error) {
-		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds*len(res)) * time.Second)
 		values, err := w.collectMetrics(startTime, endTime)
 		if err != nil {
 			return "", err
@@ -219,7 +222,7 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 	}
 
 	if err := workflow.SetQueryHandler(w.ctx, "metrics_csv", func(input []byte) (string, error) {
-		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds*len(res)) * time.Second)
 		values, err := w.collectMetrics(startTime, endTime)
 		if err != nil {
 			return "", err
@@ -249,6 +252,10 @@ func (w *benchWorkflow) withActivityOptions() workflow.Context {
 }
 
 func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricValue, error) {
+
+	temporalStateContainer := common.GetEnvOrDefaultString(w.logger, "TEMPORAL_STATE_CONTAINER", "cassandra")
+	temporalVisibilityContainer := common.GetEnvOrDefaultString(w.logger, "TEMPORAL_VISIBILITY_CONTAINER", "cassandra")
+
 	updates, err := w.queryPrometheusHistogram("persistence_latency_bucket{type='history'}", startTime, endTime)
 	if err != nil {
 		return nil, errors.Wrapf(err, "query UpdateWorkflowExecution")
@@ -257,6 +264,11 @@ func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricVa
 	appends, err := w.queryPrometheusHistogram("persistence_latency_bucket{type='history'}", startTime, endTime)
 	if err != nil {
 		return nil, errors.Wrapf(err, "query AppendHistoryNodes")
+	}
+
+	appendsVisibility, err := w.queryPrometheusHistogram("visibility_persistence_latency_bucket{type='history'}", startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query AppendVisibilityNodes")
 	}
 
 	services, err := w.queryPrometheusHistogram("service_latency_bucket{type='history'}", startTime, endTime)
@@ -274,9 +286,14 @@ func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricVa
 		return nil, errors.Wrapf(err, "query history memory")
 	}
 
-	persistenceCpus, err := w.queryPrometheusValues("sum(rate(container_cpu_usage_seconds_total{container=\"cass-cassandra\"}[2m]))", startTime, endTime)
+	persistenceCpus, err := w.queryPrometheusValues(fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{container=\"%s\"}[2m]))", temporalStateContainer), startTime, endTime)
 	if err != nil {
-		return nil, errors.Wrapf(err, "query history CPU")
+		return nil, errors.Wrapf(err, "query state CPU")
+	}
+
+	visibilityCpus, err := w.queryPrometheusValues(fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{container=\"%s\"}[2m]))", temporalVisibilityContainer), startTime, endTime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "query state CPU")
 	}
 
 	values := make([]metricValue, len(updates))
@@ -284,7 +301,7 @@ func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricVa
 		if math.IsNaN(f) {
 			return nil
 		}
-		res := int(f*1000)
+		res := int(f * 1000)
 		return &res
 	}
 	for i, update := range updates {
@@ -293,11 +310,17 @@ func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricVa
 			storage = math.Max(update, appends[i])
 		}
 		value := metricValue{Persistence: convert(storage)}
+		if len(appendsVisibility) > i {
+			value.Visibility = convert(appendsVisibility[i])
+		}
 		if len(services) > i {
 			value.HistoryService = convert(services[i])
 		}
 		if len(persistenceCpus) > i {
 			value.PersistenceCpu = convert(persistenceCpus[i])
+		}
+		if len(visibilityCpus) > i {
+			value.VisibilityCpu = convert(visibilityCpus[i])
 		}
 		if len(historyCpus) > i {
 			value.HistoryCpu = convert(historyCpus[i])
@@ -342,8 +365,11 @@ func (w *benchWorkflow) queryPrometheusHistogram(metric string, startTime, endTi
 }
 
 func (w *benchWorkflow) queryPrometheus(query string, startTime, endTime time.Time) (*model.Matrix, error) {
+
+	prometheusServerEndpoint := common.GetEnvOrDefaultString(w.logger, "PROMETHEUS_SERVER_ENDPOINT", "http://localhost:9090")
+
 	client, err := api.NewClient(api.Config{
-		Address: "http://prometheus-server",
+		Address: prometheusServerEndpoint,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating API client")
@@ -417,8 +443,10 @@ func (w *benchWorkflow) printMetricsCsv(values []metricValue) string {
 	header := strings.Join([]string{
 		"Time (seconds)",
 		"Persistence Latency (ms)",
+		"Visibility Latency (ms)",
 		"History Service Latency (ms)",
 		"Persistence CPU (mcores)",
+		"Visibility CPU (mcores)",
 		"History Service CPU (mcores)",
 		"History Service Memory Working Set (MB)",
 	}, separator)
@@ -428,6 +456,10 @@ func (w *benchWorkflow) printMetricsCsv(values []metricValue) string {
 		if v.Persistence != nil {
 			pv = strconv.Itoa(*v.Persistence)
 		}
+		var vs string
+		if v.Visibility != nil {
+			vs = strconv.Itoa(*v.Visibility)
+		}
 		var hv string
 		if v.HistoryService != nil {
 			hv = strconv.Itoa(*v.HistoryService)
@@ -435,6 +467,10 @@ func (w *benchWorkflow) printMetricsCsv(values []metricValue) string {
 		var pcpu string
 		if v.PersistenceCpu != nil {
 			pcpu = strconv.Itoa(*v.PersistenceCpu)
+		}
+		var vcpu string
+		if v.VisibilityCpu != nil {
+			vcpu = strconv.Itoa(*v.VisibilityCpu)
 		}
 		var hcpu string
 		if v.HistoryCpu != nil {
@@ -447,8 +483,10 @@ func (w *benchWorkflow) printMetricsCsv(values []metricValue) string {
 		line := strings.Join([]string{
 			strconv.Itoa((i + 1) * interval),
 			pv,
+			vs,
 			hv,
 			pcpu,
+			vcpu,
 			hcpu,
 			hmem,
 		}, separator)

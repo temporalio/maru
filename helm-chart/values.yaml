@@ -30,6 +30,10 @@ tests:
   
   enableHostVerification: false
 
+  temporalStateContainer: cassandra
+  temporalVisibilityContainer: cassandra
+  prometheusServerEndpoint: http://prometheus-server:9090
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -92,3 +96,21 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+volumes: []
+# volumes:
+# - name: client-certificates
+#   secret:
+#     secretName: client-cert
+#     items:
+#     - key: ca.pem
+#       path: ca.pem
+#     - key: server.key
+#       path: server.key
+#     - key: server.pem
+#       path: server.pem
+
+volumeMounts: []
+# volumeMounts:
+# - name: client-certificates
+#   mountPath: /etc/temporal/client-certificates
