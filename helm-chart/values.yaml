@@ -30,8 +30,8 @@ tests:
   
   enableHostVerification: false
 
-  temporalStateContainer: cassandra
-  temporalVisibilityContainer: cassandra
+  temporalStateContainer: cass-cassandra
+  temporalVisibilityContainer: elasticsearch
   prometheusServerEndpoint: http://prometheus-server:9090
 
 imagePullSecrets: []
