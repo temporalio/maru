@@ -63,7 +63,7 @@ func main() {
 
 	tlsConfig, err := getTLSConfig(hostPort, logger)
 	if err != nil {
-		logger.Error("failed to build tls config", zap.Error(err))
+		zapLogger.Fatal("failed to build tls config", zap.Error(err))
 	}
 
 	stickyCacheSize := common.GetEnvOrDefaultInt(logger, "STICKY_CACHE_SIZE", 2048)
