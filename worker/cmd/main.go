@@ -63,7 +63,7 @@ func main() {
 
 	tlsConfig, err := getTLSConfig(hostPort, logger)
 	if err != nil {
-		zapLogger.Fatal("failed to build tls config", zap.Error(err))
+		logger.zl.Fatal("failed to build tls config", zap.Error(err))
 	}
 
 	stickyCacheSize := common.GetEnvOrDefaultInt(logger, "STICKY_CACHE_SIZE", 2048)
@@ -145,7 +145,7 @@ func startNamespaceWorker(
 	})
 
 	if err != nil {
-		logger.Error("failed to build temporal client", zap.Error(err))
+		logger.(*ZapAdapter).zl.Fatal("failed to build temporal client", zap.Error(err))
 	}
 
 	workersString := common.GetEnvOrDefaultString(logger, "RUN_WORKERS", "bench,basic,basic-act")
@@ -165,7 +165,7 @@ func startNamespaceWorker(
 		}
 		err = worker.Start()
 		if err != nil {
-			logger.Error("Unable to start worker "+workerName, zap.Error(err))
+			logger.(*ZapAdapter).zl.Fatal("Unable to start worker "+workerName, zap.Error(err))
 		}
 	}
 }
