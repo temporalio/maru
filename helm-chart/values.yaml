@@ -33,6 +33,7 @@ tests:
   temporalStateContainer: cass-cassandra
   temporalVisibilityContainer: elasticsearch
   prometheusServerEndpoint: "http://prometheus-server:9090"
+  prometheusMetricsPrefix: ""
 
 imagePullSecrets: []
 nameOverride: ""

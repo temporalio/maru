@@ -74,6 +74,8 @@ spec:
               value: "{{ .Values.tests.temporalVisibilityContainer }}"
             - name: PROMETHEUS_SERVER_ENDPOINT
               value: "{{ .Values.tests.prometheusServerEndpoint }}"
+            - name: PROMETHEUS_METRICS_PREFIX
+              value: "{{ .Values.tests.prometheusMetricsPrefix }}"
           {{- with .Values.volumeMounts }}
           volumeMounts:
               {{- toYaml . | nindent 12 }}

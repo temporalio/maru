@@ -46,6 +46,8 @@ import (
 	"github.com/temporalio/maru/bench"
 	"github.com/temporalio/maru/common"
 	"github.com/temporalio/maru/target/basic"
+	"github.com/uber-go/tally/v4/prometheus"
+	sdktally "go.temporal.io/sdk/contrib/tally"
 )
 
 func main() {
@@ -143,6 +145,10 @@ func startNamespaceWorker(
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: tlsConfig,
 		},
+		MetricsHandler: sdktally.NewMetricsHandler(newPrometheusScope(logger, prometheus.Configuration{
+			ListenAddress: "0.0.0.0:9090",
+			TimerType:     "histogram",
+		})),
 	})
 
 	if err != nil {
