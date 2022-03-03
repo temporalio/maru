@@ -52,7 +52,7 @@ spec:
               value: "{{ .Values.tests.caCertFile }}"
             - name: TLS_CLIENT_CERT_FILE
               value: "{{ .Values.tests.clientCertFile }}"
-            - name: TLS_CLIENT_CERT_PRIVATE_KEY_File
+            - name: TLS_CLIENT_CERT_PRIVATE_KEY_FILE
               value: "{{ .Values.tests.clientCertPrivateKeyFile }}"
             - name: TLS_CA_CERT_DATA
               value: "{{ .Values.tests.caCertData }}"
