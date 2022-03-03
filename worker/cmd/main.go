@@ -120,7 +120,7 @@ func createNamespaceIfNeeded(logger log.Logger, namespace string, hostPort strin
 		if err == nil {
 			break
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(60 * time.Second)
 	}
 }
 
