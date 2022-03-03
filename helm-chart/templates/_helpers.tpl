@@ -55,7 +55,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Service monitor name
 */}}
 {{- define "temporal-bench.serviceMonitor.name" -}}
-{{ default "tempora-bench" .Values.serviceMonitor.name }}
+{{ default "temporal-bench" .Values.serviceMonitor.name }}
 {{- end -}}
 
 {{/*
