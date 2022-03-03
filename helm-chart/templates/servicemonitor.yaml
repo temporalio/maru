@@ -24,8 +24,7 @@ spec:
       - "{{ $.Release.Namespace }}"
   selector:
     matchLabels:
-      app.kubernetes.io/name: temporal-bench
-      app.kubernetes.io/instance: benchtest
+      {{- include "temporal-bench.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/headless: 'true'
 ---
 {{- end }}
