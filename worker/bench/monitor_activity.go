@@ -79,7 +79,9 @@ type (
 )
 
 func (m *benchMonitor) run() ([]histogramValue, error) {
-	handler := m.metricsHandler
+	handler := m.metricsHandler.WithTags(map[string]string{
+		"run_id": time.Now().Format("2 Jan 2006 15:04:05"),
+	})
 
 	m.resetMetrics()
 
