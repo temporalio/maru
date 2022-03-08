@@ -39,13 +39,21 @@ func (a *Activities) MonitorActivity(ctx context.Context, request benchMonitorAc
 	logger := activity.GetLogger(ctx)
 
 	m := benchMonitor{
-		ctx:     ctx,
-		logger:  logger,
-		client:  a.temporalClient,
-		request: request,
+		ctx:            ctx,
+		logger:         logger,
+		client:         a.temporalClient,
+		request:        request,
+		metricsHandler: activity.GetMetricsHandler(ctx),
 	}
 	return m.run()
 }
+
+const (
+	benchTimerDuration = "temporal_bench_run_duration"
+	benchGaugeTotal    = "temporal_bench_total_workflows"
+	benchGaugeClosed   = "temporal_bench_closed_workflows"
+	benchGaugeBacklog  = "temporal_bench_backlog_workflows"
+)
 
 type (
 	benchMonitorActivityRequest struct {
@@ -62,14 +70,19 @@ type (
 	}
 
 	benchMonitor struct {
-		ctx     context.Context
-		logger  log.Logger
-		client  client.Client
-		request benchMonitorActivityRequest
+		ctx            context.Context
+		logger         log.Logger
+		client         client.Client
+		request        benchMonitorActivityRequest
+		metricsHandler client.MetricsHandler
 	}
 )
 
 func (m *benchMonitor) run() ([]histogramValue, error) {
+	handler := m.metricsHandler
+
+	m.resetMetrics()
+
 	startTime := activity.GetInfo(m.ctx).StartedTime
 	deadline := activity.GetInfo(m.ctx).Deadline.Add(time.Second * -5)
 
@@ -79,6 +92,8 @@ func (m *benchMonitor) run() ([]histogramValue, error) {
 	}
 
 	hist := m.calculateHistogram(stats)
+
+	handler.Timer(benchTimerDuration).Record(time.Since(startTime))
 
 	m.logger.Info("!!! BENCH TEST COMPLETED !!!", "duration", time.Since(startTime))
 	return hist, nil
@@ -94,6 +109,8 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflo
 		}
 
 		totalWaitDuration := time.Since(waitStartTime)
+
+		m.publishMetrics()
 
 		if complete {
 			stats := m.collectWorkflowTimings()
@@ -223,4 +240,24 @@ func (m *benchMonitor) calculateHistogram(stats []workflowTiming) []histogramVal
 		}
 	}
 	return hist
+}
+
+func (m *benchMonitor) resetMetrics() {
+	handler := m.metricsHandler
+
+	handler.Gauge(benchGaugeTotal).Update(0)
+	handler.Gauge(benchGaugeClosed).Update(0)
+	handler.Gauge(benchGaugeBacklog).Update(0)
+}
+
+func (m *benchMonitor) publishMetrics() {
+	handler := m.metricsHandler
+
+	total := m.request.Count
+	closed := len(m.collectWorkflowTimings())
+	backlog := total - closed
+
+	handler.Gauge(benchGaugeTotal).Update(float64(total))
+	handler.Gauge(benchGaugeClosed).Update(float64(closed))
+	handler.Gauge(benchGaugeBacklog).Update(float64(backlog))
 }
