@@ -3,9 +3,10 @@ module github.com/temporalio/maru
 go 1.16
 
 require (
+	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.10.0
-	github.com/prometheus/common v0.18.0
+	github.com/prometheus/client_golang v1.11.1
+	github.com/prometheus/common v0.26.0
 	github.com/stretchr/testify v1.7.0
 	go.temporal.io/api v1.4.1-0.20210420220407-6f00f7f98373
 	go.temporal.io/sdk v1.7.0
