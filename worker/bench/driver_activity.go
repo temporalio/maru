@@ -25,23 +25,23 @@ package bench
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/pkg/errors"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 	"golang.org/x/time/rate"
-	"time"
 )
 
 func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActivityRequest) error {
 	logger := activity.GetLogger(ctx)
 	driver := benchDriver{
-		ctx:     ctx,
 		logger:  logger,
 		client:  a.temporalClient,
 		request: request,
 	}
-	return driver.run()
+	return driver.run(ctx)
 }
 
 type (
@@ -53,7 +53,6 @@ type (
 		Parameters   interface{}
 	}
 	benchDriver struct {
-		ctx     context.Context
 		logger  log.Logger
 		client  client.Client
 		request benchDriverActivityRequest
@@ -62,13 +61,13 @@ type (
 
 const defaultWorkflowTaskStartToCloseTimeoutDuration = 10 * time.Second
 
-func (d *benchDriver) run() error {
+func (d *benchDriver) run(ctx context.Context) error {
 	idx := 0
-	deadline := activity.GetInfo(d.ctx).Deadline.Add(-2 * time.Second)
-	if activity.HasHeartbeatDetails(d.ctx) {
+	deadline := activity.GetInfo(ctx).Deadline.Add(-2 * time.Second)
+	if activity.HasHeartbeatDetails(ctx) {
 		// we are retrying from an activity timeout, and there is reported progress that we should resume from.
 		var completedIdx int
-		if err := activity.GetHeartbeatDetails(d.ctx, &completedIdx); err == nil {
+		if err := activity.GetHeartbeatDetails(ctx, &completedIdx); err == nil {
 			idx = completedIdx + 1
 			d.logger.Info("resuming from failed attempt", "ReportedProgress", completedIdx)
 		}
@@ -80,16 +79,16 @@ func (d *benchDriver) run() error {
 	}
 	limiter := rate.NewLimiter(limit, 1)
 	for i := idx; i < d.request.BatchSize; i++ {
-		if err := limiter.Wait(d.ctx); err != nil {
+		if err := limiter.Wait(ctx); err != nil {
 			return errors.Wrapf(err, "waiting for limiter")
 		}
 
-		if err := d.execute(i); err != nil {
+		if err := d.execute(ctx, i); err != nil {
 			d.logger.Error("driver failed to execute", "Error", err, "ID", i)
 			return err
 		}
 
-		activity.RecordHeartbeat(d.ctx, i)
+		activity.RecordHeartbeat(ctx, i)
 
 		if time.Now().After(deadline) {
 			return &TestError{
@@ -99,8 +98,8 @@ func (d *benchDriver) run() error {
 		}
 
 		select {
-		case <-d.ctx.Done():
-			return fmt.Errorf("driver activity context finished: %+v", d.ctx.Err())
+		case <-ctx.Done():
+			return fmt.Errorf("driver activity context finished: %+v", ctx.Err())
 		default:
 		}
 	}
@@ -108,7 +107,7 @@ func (d *benchDriver) run() error {
 	return nil
 }
 
-func (d *benchDriver) execute(iterationID int) error {
+func (d *benchDriver) execute(ctx context.Context, iterationID int) error {
 	d.logger.Info("driver.execute starting", "workflowName", d.request.WorkflowName, "basedID", d.request.BaseID, "iterationID", iterationID)
 	workflowID := fmt.Sprintf("%s-%s-%d", d.request.WorkflowName, d.request.BaseID, iterationID)
 	startOptions := client.StartWorkflowOptions{
@@ -117,7 +116,7 @@ func (d *benchDriver) execute(iterationID int) error {
 		WorkflowExecutionTimeout: 30 * time.Minute,
 		WorkflowTaskTimeout:      defaultWorkflowTaskStartToCloseTimeoutDuration,
 	}
-	_, err := d.client.ExecuteWorkflow(d.ctx, startOptions, d.request.WorkflowName, buildPayload(d.request.Parameters))
+	_, err := d.client.ExecuteWorkflow(ctx, startOptions, d.request.WorkflowName, buildPayload(d.request.Parameters))
 	if err != nil {
 		d.logger.Error("failed to start workflow", "Error", err, "ID", workflowID)
 	}

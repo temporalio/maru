@@ -25,25 +25,25 @@ package bench
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"go.temporal.io/api/filter/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
-	"strings"
-	"time"
 )
 
 func (a *Activities) MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {
 	logger := activity.GetLogger(ctx)
 
 	m := benchMonitor{
-		ctx:     ctx,
 		logger:  logger,
 		client:  a.temporalClient,
 		request: request,
 	}
-	return m.run()
+	return m.run(ctx)
 }
 
 type (
@@ -61,18 +61,17 @@ type (
 	}
 
 	benchMonitor struct {
-		ctx     context.Context
 		logger  log.Logger
 		client  client.Client
 		request benchMonitorActivityRequest
 	}
 )
 
-func (m *benchMonitor) run() ([]histogramValue, error) {
-	startTime := activity.GetInfo(m.ctx).StartedTime
-	deadline := activity.GetInfo(m.ctx).Deadline.Add(time.Second * -5)
+func (m *benchMonitor) run(ctx context.Context) ([]histogramValue, error) {
+	startTime := activity.GetInfo(ctx).StartedTime
+	deadline := activity.GetInfo(ctx).Deadline.Add(time.Second * -5)
 
-	stats, err := m.validateScenarioCompletion(deadline)
+	stats, err := m.validateScenarioCompletion(ctx, deadline)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +82,10 @@ func (m *benchMonitor) run() ([]histogramValue, error) {
 	return hist, nil
 }
 
-func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflowTiming, error) {
-	waitStartTime := activity.GetInfo(m.ctx).StartedTime
+func (m *benchMonitor) validateScenarioCompletion(ctx context.Context, deadline time.Time) ([]workflowTiming, error) {
+	waitStartTime := activity.GetInfo(ctx).StartedTime
 	for {
-		complete, err := m.isComplete()
+		complete, err := m.isComplete(ctx)
 		if err != nil {
 			m.logger.Info("bench monitor failure", "error", err)
 			return nil, err
@@ -95,7 +94,7 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflo
 		totalWaitDuration := time.Now().Sub(waitStartTime)
 
 		if complete {
-			stats := m.collectWorkflowTimings()
+			stats := m.collectWorkflowTimings(ctx)
 
 			if len(stats) < m.request.Count {
 				m.logger.Warn("no open workflows but fewer closed workflows than expected",
@@ -112,14 +111,14 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflo
 			"deadline", deadline,
 		)
 		activity.RecordHeartbeat(
-			m.ctx,
+			ctx,
 			fmt.Sprintf("test scenario - duration: %v, deadline: %v", totalWaitDuration, deadline))
 
 		time.Sleep(time.Second * 3)
 
 		select {
-		case <-m.ctx.Done():
-			return nil, fmt.Errorf("monitor activity context finished %+v", m.ctx.Err())
+		case <-ctx.Done():
+			return nil, fmt.Errorf("monitor activity context finished %+v", ctx.Err())
 		default:
 		}
 
@@ -131,10 +130,10 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflo
 	}
 }
 
-func (m *benchMonitor) isComplete() (bool, error) {
+func (m *benchMonitor) isComplete(ctx context.Context) (bool, error) {
 	m.logger.Info("IsComplete? enter")
 	filterStartTime := m.request.StartTime.Add(-10 * time.Second)
-	ws, err := m.client.ListOpenWorkflow(m.ctx, &workflowservice.ListOpenWorkflowExecutionsRequest{
+	ws, err := m.client.ListOpenWorkflow(ctx, &workflowservice.ListOpenWorkflowExecutionsRequest{
 		MaximumPageSize: 1,
 		Filters: &workflowservice.ListOpenWorkflowExecutionsRequest_TypeFilter{
 			TypeFilter: &filter.WorkflowTypeFilter{
@@ -154,13 +153,13 @@ func (m *benchMonitor) isComplete() (bool, error) {
 	return done, nil
 }
 
-func (m *benchMonitor) collectWorkflowTimings() []workflowTiming {
+func (m *benchMonitor) collectWorkflowTimings(ctx context.Context) []workflowTiming {
 	var stats []workflowTiming
 	filterStartTime := m.request.StartTime.Add(-10 * time.Second)
 	prefix := fmt.Sprintf("%s-%s-", m.request.WorkflowName, m.request.BaseID)
 	var nextPageToken []byte
 	for {
-		ws, err := m.client.ListClosedWorkflow(m.ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
+		ws, err := m.client.ListClosedWorkflow(ctx, &workflowservice.ListClosedWorkflowExecutionsRequest{
 			MaximumPageSize: 1000,
 			StartTimeFilter: &filter.StartTimeFilter{
 				EarliestTime: &filterStartTime,
@@ -191,7 +190,7 @@ func (m *benchMonitor) collectWorkflowTimings() []workflowTiming {
 			break
 		}
 		nextPageToken = ws.NextPageToken
-		activity.RecordHeartbeat(m.ctx, len(stats))
+		activity.RecordHeartbeat(ctx, len(stats))
 	}
 	return stats
 }

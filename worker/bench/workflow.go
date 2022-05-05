@@ -45,13 +45,12 @@ import (
 func Workflow(ctx workflow.Context, request benchWorkflowRequest) error {
 	logger := workflow.GetLogger(ctx)
 	w := benchWorkflow{
-		ctx:      ctx,
 		logger:   logger,
 		request:  request,
 		baseID:   workflow.GetInfo(ctx).WorkflowExecution.ID,
 		deadline: workflow.Now(ctx).Add(workflow.GetInfo(ctx).WorkflowExecutionTimeout),
 	}
-	return w.run()
+	return w.run(ctx)
 }
 
 type (
@@ -89,15 +88,14 @@ type (
 	}
 
 	metricValue struct {
-		Persistence    *int `json:"persistence"`
-		HistoryService *int `json:"historyService"`
-		PersistenceCpu *int `json:"persistenceCpu"`
-		HistoryCpu     *int `json:"historyCpu"`
+		Persistence    *int     `json:"persistence"`
+		HistoryService *int     `json:"historyService"`
+		PersistenceCpu *int     `json:"persistenceCpu"`
+		HistoryCpu     *int     `json:"historyCpu"`
 		HistoryMemory  *float64 `json:"historyMemory"`
 	}
 
 	benchWorkflow struct {
-		ctx      workflow.Context
 		logger   log.Logger
 		request  benchWorkflowRequest
 		baseID   string
@@ -105,10 +103,10 @@ type (
 	}
 )
 
-func (w *benchWorkflow) run() error {
+func (w *benchWorkflow) run(ctx workflow.Context) error {
 	w.logger.Info("bench driver workflow started")
 
-	startTime := workflow.Now(w.ctx)
+	startTime := workflow.Now(ctx)
 
 	if len(w.request.Steps) == 0 {
 		return errors.New("request must have at least one step defined")
@@ -119,17 +117,17 @@ func (w *benchWorkflow) run() error {
 	}
 
 	for i, step := range w.request.Steps {
-		if err := w.executeDriverActivities(i, step); err != nil {
+		if err := w.executeDriverActivities(ctx, i, step); err != nil {
 			return err
 		}
 	}
 
-	res, err := w.executeMonitorActivity(startTime)
+	res, err := w.executeMonitorActivity(ctx, startTime)
 	if err != nil {
 		return err
 	}
 
-	if err = w.setupQueries(res, startTime); err != nil {
+	if err = w.setupQueries(ctx, res, startTime); err != nil {
 		return err
 	}
 
@@ -137,7 +135,7 @@ func (w *benchWorkflow) run() error {
 	return nil
 }
 
-func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflowRequestStep) (finalErr error) {
+func (w *benchWorkflow) executeDriverActivities(ctx workflow.Context, stepIndex int, step benchWorkflowRequestStep) (finalErr error) {
 	concurrency := 1
 	switch {
 	case step.Concurrency > 0:
@@ -153,7 +151,7 @@ func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflo
 
 	for i := 0; i < concurrency; i++ {
 		futures = append(futures, workflow.ExecuteActivity(
-			w.withActivityOptions(),
+			w.withActivityOptions(ctx),
 			"bench-DriverActivity",
 			benchDriverActivityRequest{
 				BaseID:       fmt.Sprintf("%s-%d-%d", w.baseID, stepIndex, i),
@@ -165,7 +163,7 @@ func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflo
 	}
 
 	for i, f := range futures {
-		err := f.Get(w.ctx, nil)
+		err := f.Get(ctx, nil)
 		if err != nil {
 			w.logger.Warn("failed to execute request", "WorkflowName", w.request.Workflow.Name, "Error", err, "batchID", i)
 			finalErr = err
@@ -175,13 +173,13 @@ func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflo
 	return finalErr
 }
 
-func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histogramValue, err error) {
+func (w *benchWorkflow) executeMonitorActivity(ctx workflow.Context, startTime time.Time) (res []histogramValue, err error) {
 	var count int
 	for _, step := range w.request.Steps {
 		count += step.Count
 	}
 	err = workflow.ExecuteActivity(
-		w.withActivityOptions(),
+		w.withActivityOptions(ctx),
 		"bench-MonitorActivity",
 		benchMonitorActivityRequest{
 			WorkflowName:      w.request.Workflow.Name,
@@ -189,25 +187,25 @@ func (w *benchWorkflow) executeMonitorActivity(startTime time.Time) (res []histo
 			BaseID:            w.baseID,
 			Count:             count,
 			IntervalInSeconds: w.request.Report.IntervalInSeconds,
-		}).Get(w.ctx, &res)
+		}).Get(ctx, &res)
 	return
 }
 
-func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) error {
-	if err := workflow.SetQueryHandler(w.ctx, "histogram", func(input []byte) (string, error) {
+func (w *benchWorkflow) setupQueries(ctx workflow.Context, res []histogramValue, startTime time.Time) error {
+	if err := workflow.SetQueryHandler(ctx, "histogram", func(input []byte) (string, error) {
 		return w.printJson(res), nil
 	}); err != nil {
 		return err
 	}
 
-	if err := workflow.SetQueryHandler(w.ctx, "histogram_csv", func(input []byte) (string, error) {
+	if err := workflow.SetQueryHandler(ctx, "histogram_csv", func(input []byte) (string, error) {
 		return w.printHistogramCsv(res), nil
 	}); err != nil {
 		return err
 	}
 
-	if err := workflow.SetQueryHandler(w.ctx, "metrics", func(input []byte) (string, error) {
-		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+	if err := workflow.SetQueryHandler(ctx, "metrics", func(input []byte) (string, error) {
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds*len(res)) * time.Second)
 		values, err := w.collectMetrics(startTime, endTime)
 		if err != nil {
 			return "", err
@@ -218,8 +216,8 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 		return err
 	}
 
-	if err := workflow.SetQueryHandler(w.ctx, "metrics_csv", func(input []byte) (string, error) {
-		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+	if err := workflow.SetQueryHandler(ctx, "metrics_csv", func(input []byte) (string, error) {
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds*len(res)) * time.Second)
 		values, err := w.collectMetrics(startTime, endTime)
 		if err != nil {
 			return "", err
@@ -233,10 +231,10 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 	return nil
 }
 
-func (w *benchWorkflow) withActivityOptions() workflow.Context {
+func (w *benchWorkflow) withActivityOptions(ctx workflow.Context) workflow.Context {
 	ao := workflow.ActivityOptions{
 		HeartbeatTimeout:    60 * time.Second,
-		StartToCloseTimeout: w.deadline.Sub(workflow.Now(w.ctx)),
+		StartToCloseTimeout: w.deadline.Sub(workflow.Now(ctx)),
 		TaskQueue:           benchTaskQueue,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:        50 * time.Millisecond,
@@ -245,7 +243,7 @@ func (w *benchWorkflow) withActivityOptions() workflow.Context {
 		},
 	}
 
-	return workflow.WithActivityOptions(w.ctx, ao)
+	return workflow.WithActivityOptions(ctx, ao)
 }
 
 func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricValue, error) {
@@ -284,7 +282,7 @@ func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricVa
 		if math.IsNaN(f) {
 			return nil
 		}
-		res := int(f*1000)
+		res := int(f * 1000)
 		return &res
 	}
 	for i, update := range updates {
