@@ -2,6 +2,11 @@
 
 Tool to generate load for [Temporal](https://github.com/temporalio/temporal/) workflows. Named after [Kobayashi Maru](https://en.m.wikipedia.org/wiki/Kobayashi_Maru).
 
+**⚠️ WARNING**
+
+This repository is a load generator for Temporal and does not represent suggested Go SDK practices or worker settings.
+Please reference the Go SDK documentation or the Go SDK samples for better guidance.
+
 ## How It Works
 
 This repository defines a Temporal workflow which serves as a driver for load tests. Given the definition
