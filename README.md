@@ -5,7 +5,7 @@ Tool to generate load for [Temporal](https://github.com/temporalio/temporal/) wo
 **⚠️ WARNING**
 
 This repository is a load generator for Temporal and does not represent suggested Go SDK practices or worker settings.
-Please reference the Go SDK documentation or the Go SDK samples for better guidance.
+Please reference the Go SDK documentation, or the Go SDK samples for better guidance.
 
 ## How It Works
 
@@ -45,6 +45,9 @@ easily experiment with running different sizes of Kubernetes clusters.
 ## Start a basic test using an input file
 
 Once the bench worker and target workflows are running, you can start a quick test with the following command
+
+* Note: make sure you run this command in the base directory of your cloned maru repository (not the worker directory
+  where you started the worker earlier). 
 
 ```
 tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-test.json --wid 1
