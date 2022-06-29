@@ -46,11 +46,12 @@ func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActi
 
 type (
 	benchDriverActivityRequest struct {
-		WorkflowName string
-		BaseID       string
-		BatchSize    int
-		Rate         int
-		Parameters   interface{}
+		WorkflowName  string
+		TaskQueueName string
+		BaseID        string
+		BatchSize     int
+		Rate          int
+		Parameters    interface{}
 	}
 	benchDriver struct {
 		ctx     context.Context
@@ -113,7 +114,7 @@ func (d *benchDriver) execute(iterationID int) error {
 	workflowID := fmt.Sprintf("%s-%s-%d", d.request.WorkflowName, d.request.BaseID, iterationID)
 	startOptions := client.StartWorkflowOptions{
 		ID:                       workflowID,
-		TaskQueue:                targetTaskQueue,
+		TaskQueue:                d.request.TaskQueueName,
 		WorkflowExecutionTimeout: 30 * time.Minute,
 		WorkflowTaskTimeout:      defaultWorkflowTaskStartToCloseTimeoutDuration,
 	}

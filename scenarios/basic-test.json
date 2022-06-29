@@ -5,6 +5,7 @@
     }],
     "workflow": {
         "name": "basic-workflow",
+        "taskQueue": "temporal-basic",
         "args": {
             "sequenceCount": 3
         }

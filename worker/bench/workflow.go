@@ -66,6 +66,8 @@ type (
 	benchWorkflowRequestWorkflow struct {
 		// Name is the name of the workflow to run for benchmarking (workflow under test).
 		Name string `json:"name"`
+		// TaskQueue is the name of the task queue to use when executing the workflow.
+		TaskQueue string `json:"taskqueue"`
 		// Args is the argument that should be the input of all executions of the workflow under test.
 		Args interface{} `json:"args"`
 	}
@@ -156,11 +158,12 @@ func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflo
 			w.withActivityOptions(),
 			"bench-DriverActivity",
 			benchDriverActivityRequest{
-				BaseID:       fmt.Sprintf("%s-%d-%d", w.baseID, stepIndex, i),
-				BatchSize:    step.Count / concurrency,
-				Rate:         step.RatePerSecond / concurrency,
-				WorkflowName: w.request.Workflow.Name,
-				Parameters:   w.request.Workflow.Args,
+				BaseID:        fmt.Sprintf("%s-%d-%d", w.baseID, stepIndex, i),
+				BatchSize:     step.Count / concurrency,
+				Rate:          step.RatePerSecond / concurrency,
+				WorkflowName:  w.request.Workflow.Name,
+				TaskQueueName: w.request.Workflow.TaskQueue,
+				Parameters:    w.request.Workflow.Args,
 			}))
 	}
 

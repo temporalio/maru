@@ -37,9 +37,6 @@ func NewActivities(temporalClient client.Client) *Activities {
 // benchTaskQueue is the queue used by worker to pull workflow and activity tasks
 const benchTaskQueue = "temporal-bench"
 
-// targetTaskQueue is the queue used by worker to schedule target workflows
-const targetTaskQueue = "temporal-basic"
-
 // TestError represents an error that should abort / fail the whole bench test
 type TestError struct {
 	Message string
