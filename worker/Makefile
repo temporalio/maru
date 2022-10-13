@@ -12,6 +12,7 @@ NAMESPACE ?= benchtest
 NAMESPACE_RETENTION ?= 1
 FRONTEND_ADDRESS ?= 127.0.0.1:7233
 NUM_DECISION_POLLERS ?= 10
+PROMETHEUS_URL ?= http://prometheus-server
 
 DOCKER_IMAGE ?= temporal-bench
 DOCKER_IMAGE_TAG := $(shell whoami | tr -d " ")-local
@@ -38,6 +39,7 @@ run: bins
 	NAMESPACE_RETENTION=$(NAMESPACE_RETENTION) \
 	FRONTEND_ADDRESS=$(FRONTEND_ADDRESS) \
 	NUM_DECISION_POLLERS=$(NUM_DECISION_POLLERS) \
+	PROMETHEUS_URL=$(PROMETHEUS_URL) \
 	bins/temporal-bench
 
 docker-image:

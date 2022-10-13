@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -89,10 +90,10 @@ type (
 	}
 
 	metricValue struct {
-		Persistence    *int `json:"persistence"`
-		HistoryService *int `json:"historyService"`
-		PersistenceCpu *int `json:"persistenceCpu"`
-		HistoryCpu     *int `json:"historyCpu"`
+		Persistence    *int     `json:"persistence"`
+		HistoryService *int     `json:"historyService"`
+		PersistenceCpu *int     `json:"persistenceCpu"`
+		HistoryCpu     *int     `json:"historyCpu"`
 		HistoryMemory  *float64 `json:"historyMemory"`
 	}
 
@@ -207,7 +208,7 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 	}
 
 	if err := workflow.SetQueryHandler(w.ctx, "metrics", func(input []byte) (string, error) {
-		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds*len(res)) * time.Second)
 		values, err := w.collectMetrics(startTime, endTime)
 		if err != nil {
 			return "", err
@@ -219,7 +220,7 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 	}
 
 	if err := workflow.SetQueryHandler(w.ctx, "metrics_csv", func(input []byte) (string, error) {
-		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds * len(res)) * time.Second)
+		endTime := startTime.Add(time.Duration(w.request.Report.IntervalInSeconds*len(res)) * time.Second)
 		values, err := w.collectMetrics(startTime, endTime)
 		if err != nil {
 			return "", err
@@ -284,7 +285,7 @@ func (w *benchWorkflow) collectMetrics(startTime, endTime time.Time) ([]metricVa
 		if math.IsNaN(f) {
 			return nil
 		}
-		res := int(f*1000)
+		res := int(f * 1000)
 		return &res
 	}
 	for i, update := range updates {
@@ -342,9 +343,14 @@ func (w *benchWorkflow) queryPrometheusHistogram(metric string, startTime, endTi
 }
 
 func (w *benchWorkflow) queryPrometheus(query string, startTime, endTime time.Time) (*model.Matrix, error) {
+	prometheusURL := os.Getenv("PROMETHEUS_URL")
+	if prometheusURL == "" {
+		prometheusURL = "http://prometheus-server"
+	}
 	client, err := api.NewClient(api.Config{
-		Address: "http://prometheus-server",
+		Address: prometheusURL,
 	})
+
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating API client")
 	}

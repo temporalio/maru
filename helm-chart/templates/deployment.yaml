@@ -67,7 +67,8 @@ spec:
               value: "{{ .Values.tests.skipNamespaceCreation }}"
             - name: RUN_WORKERS
               value: "{{ .Values.workers }}"
-
+            - name: PROMETHEUS_URL
+              value: "{{ .Values.tests.prometheusURL }}"
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

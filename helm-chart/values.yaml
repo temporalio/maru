@@ -17,6 +17,7 @@ tests:
   namespaceName: benchtest
   namespaceRetention: "1"
   frontendAddress: temporaltest-frontend:7233
+  prometheusURL: "http://prometheus-server"
   numDecisionPollers: 50
   skipNamespaceCreation: false
   caCertFile: ""
@@ -27,7 +28,7 @@ tests:
   caCertData: ""
   clientCertData: ""
   clientCertPrivateKeyData: ""
-  
+
   enableHostVerification: false
 
 imagePullSecrets: []

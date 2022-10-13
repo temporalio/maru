@@ -20,6 +20,7 @@ The driver application reads the following environment variables to connect to a
 ```
 NAMESPACE=default
 FRONTEND_ADDRESS=127.0.0.1:7233
+PROMETHEUS_URL=http://prometheus-server
 ```
 
 You will need to run the bench application, which also acts as a Temporal worker. Use the makefile to do so:
@@ -46,8 +47,7 @@ easily experiment with running different sizes of Kubernetes clusters.
 
 Once the bench worker and target workflows are running, you can start a quick test with the following command
 
-* Note: make sure you run this command in the base directory of your cloned maru repository (not the worker directory
-  where you started the worker earlier). 
+* Note: make sure you run this command in the base directory of your cloned maru repository (not the worker directory where you started the worker earlier).
 
 ```
 tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-test.json --wid 1
@@ -114,7 +114,7 @@ For example, save the CSV to a file, upload it to from Google Spreadsheets, and 
 
 ## Retrieve the metrics
 
-If you have Prometheus installed and configured to listen at `http://prometheus-server`,
+If you have Prometheus installed and configured, you can pass its URL via `PROMETHEUS_URL` environment variable (default: `http://prometheus-server`),
 you can use an additional query to retrieve the metrics of storage and History service utilization:
 
 ```
