@@ -50,7 +50,7 @@ Once the bench worker and target workflows are running, you can start a quick te
 * Note: make sure you run this command in the base directory of your cloned maru repository (not the worker directory where you started the worker earlier).
 
 ```
-tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-test.json --wid 1
+tctl --namespace benchtest wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-test.json --wid 1
 ```
 
 This command starts a basic Bench workflow which in turns runs the Basic workflow six times. If everything is configured correctly, you should be able to see those workflows in Web UI:
@@ -62,7 +62,7 @@ This command starts a basic Bench workflow which in turns runs the Basic workflo
 The Bench workflow returns the statistics of the workflow execution. You can query the workflow to retrieve execution statistics with the following command
 
 ```
-$ tctl wf query --qt histogram --wid 1
+$ tctl --namespace benchtest wf query --qt histogram --wid 1
 Query result:
 [[{"started":6,"closed":6,"backlog":0}]]
 ```
@@ -74,7 +74,7 @@ The workflow completed almost instantaneously, so there is just one data point. 
 Here is a sample test that runs a steady workload of 20 workflows per second for 10 minutes:
 
 ```
-tctl wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-const12k.json --wid 2
+tctl --namespace benchtest wf start --tq temporal-bench --wt bench-workflow --wtt 5 --et 1800 --if ./scenarios/basic-const12k.json --wid 2
 ```
 
 It runs 12,000 workflows in total. The scenario also sets the reporting interval to 10 seconds, which means that the resulting report will have data points for every 10-second interval.
@@ -84,7 +84,7 @@ It runs 12,000 workflows in total. The scenario also sets the reporting interval
 Execute the `histogram` query to retrieve the execution statistics
 
 ```
-$ tctl wf query --qt histogram --wid 2
+$ tctl --namespace benchtest wf query --qt histogram --wid 2
 Query result:
 [[{"started":200,"closed":200,"backlog":0},{"started":200,"closed":200,"backlog":0},
 {"started":200,"closed":200,"backlog":0},{"started":200,"closed":200,"backlog":0},
@@ -96,7 +96,7 @@ The result is a JSON array of execution statistics, where each array item repres
 You can also retrieve the same information printed as a CSV file with the `histrogram_csv` query
 
 ```
-$ tctl wf query --qt histogram_csv --wid 2
+$ tctl --namespace benchtest wf query --qt histogram_csv --wid 2
 Query result:
 [Time (seconds);Workflows Started;Workflows Started Rate;Workflow Closed;Workflow Closed Rate;Backlog
 10;200;20.000000;200;20.000000;0
@@ -118,7 +118,7 @@ If you have Prometheus installed and configured, you can pass its URL via `PROME
 you can use an additional query to retrieve the metrics of storage and History service utilization:
 
 ```
-tctl wf query --qt metrics_csv --wid 2
+tctl --namespace benchtest wf query --qt metrics_csv --wid 2
 Query result:
 [Time (seconds);Persistence Latency (ms);History Service Latency (ms);Persistence CPU (mcores);History Service CPU (mcores);History Service Memory Working Set (MB)
 60;8;456;494;418;27
