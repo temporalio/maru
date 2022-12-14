@@ -46,6 +46,11 @@ import (
 
 	"github.com/temporalio/maru/bench"
 	"github.com/temporalio/maru/target/basic"
+
+	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/uber-go/tally/v4"
+	"github.com/uber-go/tally/v4/prometheus"
+	sdktally "go.temporal.io/sdk/contrib/tally"
 )
 
 func main() {
@@ -67,10 +72,8 @@ func main() {
 	stickyCacheSize := getEnvOrDefaultInt(logger, "STICKY_CACHE_SIZE", 2048)
 	worker.SetStickyWorkflowCacheSize(stickyCacheSize)
 
-	startNamespaceWorker(logger, namespace, hostPort, tlsConfig, skipNamespaceCreation)
+	startWorkers(logger, namespace, hostPort, tlsConfig, skipNamespaceCreation)
 
-	// The workers are supposed to be long running process that should not exit.
-	// Use select{} to block indefinitely for samples, you can quit by CMD+C.
 	select {}
 }
 
@@ -170,7 +173,7 @@ func getEnvOrDefaultInt(logger *zap.Logger, envVarName string, defaultValue int)
 	return value
 }
 
-func startNamespaceWorker(
+func startWorkers(
 	logger *zap.Logger,
 	namespace string,
 	hostPort string,
@@ -181,13 +184,17 @@ func startNamespaceWorker(
 		createNamespaceIfNeeded(logger, namespace, hostPort, tlsConfig)
 	}
 
-	serviceClient, err := client.NewClient(client.Options{
-		Namespace:    namespace,
-		HostPort:     hostPort,
-		Logger:       NewZapAdapter(logger),
+	serviceClient, err := client.Dial(client.Options{
+		Namespace: namespace,
+		HostPort:  hostPort,
+		Logger:    NewZapAdapter(logger),
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: tlsConfig,
 		},
+		MetricsHandler: sdktally.NewMetricsHandler(newPrometheusScope(logger, prometheus.Configuration{
+			ListenAddress: "0.0.0.0:9090",
+			TimerType:     "histogram",
+		})),
 	})
 
 	if err != nil {
@@ -211,9 +218,33 @@ func startNamespaceWorker(
 		}
 		err = worker.Start()
 		if err != nil {
-			logger.Fatal("Unable to start worker " + workerName, zap.Error(err))
+			logger.Fatal("Unable to start worker "+workerName, zap.Error(err))
 		}
 	}
+}
+
+func newPrometheusScope(logger *zap.Logger, c prometheus.Configuration) tally.Scope {
+	reporter, err := c.NewReporter(
+		prometheus.ConfigurationOptions{
+			Registry: prom.NewRegistry(),
+			OnError: func(err error) {
+				logger.Error("error in prometheus reporter", zap.Error(err))
+			},
+		},
+	)
+	if err != nil {
+		logger.Fatal("error creating prometheus reporter", zap.Error(err))
+	}
+	scopeOpts := tally.ScopeOptions{
+		CachedReporter:  reporter,
+		Separator:       prometheus.DefaultSeparator,
+		SanitizeOptions: &sdktally.PrometheusSanitizeOptions,
+	}
+	scope, _ := tally.NewRootScope(scopeOpts, time.Second)
+	scope = sdktally.NewPrometheusNamingScope(scope)
+
+	logger.Info("prometheus metrics scope created")
+	return scope
 }
 
 func constructBenchWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
