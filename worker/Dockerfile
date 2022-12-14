@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM golang:1.16-alpine3.12 AS builder
+FROM golang:1.18.9-alpine3.17 AS builder
 
 # Install build tools
 RUN apk add --update --no-cache ca-certificates git make openssh
@@ -21,7 +21,7 @@ COPY . .
 RUN make clean && CGO_ENABLED=0 make bins
 
 # Stage 2: Bench worker
-FROM alpine:3.12 AS bench-worker
+FROM alpine:3.17 AS bench-worker
 
 COPY --from=builder /temporal-bench/bins/temporal-bench /usr/local/bin/
 
