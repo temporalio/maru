@@ -167,7 +167,7 @@ Here are all the parameters you may configure:
 - `steps[i].ratePerSecond` - The maximum number of workflow executions to start per second (rate limiting). By default, no rate limiting applies.
 - `steps[i].concurrency` - The number of parallel activities that bench will use to start target workflows. Can be useful when `ratePerSecond` is too high for a single activity to keep up. Defaults to `ratePerSecond` divided by `10`.
 - `workflow.name` - The name of a workflow to be used as the testing target. The bench will start `step[*].count` of these workflows.
-- `workflow.taskQueue` - The name of a task queue to use when starting the target workflow.
+- `workflow.taskQueue` - The name of the task queue to use when starting the target workflow.
 - `workflow.args` - Arguments to send to the target workflows. This must match the shape of the target workflow's inputs.
 - `report.intervalInSeconds` - The resolution of execution statistics in the resulting report. Defaults to 1 minute.
 
