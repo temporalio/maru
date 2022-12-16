@@ -39,10 +39,6 @@ workflow for starters.
 The provided [Helm chart](https://github.com/temporalio/maru/tree/master/helm-chart) can help you deploy
 the Bench application to your existing Kubernetes cluster.
 
-The provided [Pulumi program](https://github.com/temporalio/maru/tree/master/pulumi) shows an example
-of deploying a new Azure Kubernetes Cluster, the Temporal server, and the bench from scratch. This way, you can
-easily experiment with running different sizes of Kubernetes clusters.
-
 ## Start a basic test using an input file
 
 Once the bench worker and target workflows are running, you can start a quick test with the following command
