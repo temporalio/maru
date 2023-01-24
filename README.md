@@ -108,6 +108,16 @@ For example, save the CSV to a file, upload it to from Google Spreadsheets, and 
 
 ![Execution Chart](./images/flat-chart.png)
 
+### Retrieve an interactive chart
+
+Execute the `histogram_graph` query to retrieve an HTML page powered by the `go-echarts` library:
+
+```
+$ tctl --namespace benchtest workflow query --query_type histogram_graph --workflow_id 2 | tail -n +2 | sed 's/^\["//' | sed 's/"\]$//' | sed 's/\\n/\n/g' | sed 's/\\u003c/</g' | sed 's/\\u003e/>/g' | sed 's/\\"/"/g' > benchmark.html
+```
+
+The resulting HTML can be opened directly in a browser and shows the benchmark run statistics.
+
 ## Retrieve the metrics
 
 If you have Prometheus installed and configured, you can pass its URL via `PROMETHEUS_URL` environment variable (default: `http://prometheus-server`),

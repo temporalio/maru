@@ -234,6 +234,12 @@ func (w *benchWorkflow) setupQueries(res []histogramValue, startTime time.Time) 
 		return err
 	}
 
+	if err := workflow.SetQueryHandler(w.ctx, "histogram_graph", func(input []byte) (string, error) {
+		return printHistogramGraph(w.request, res), nil
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
