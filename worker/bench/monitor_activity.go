@@ -25,13 +25,14 @@ package bench
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"go.temporal.io/api/filter/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
-	"strings"
-	"time"
 )
 
 func (a *Activities) MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {
@@ -132,7 +133,7 @@ func (m *benchMonitor) validateScenarioCompletion(deadline time.Time) ([]workflo
 }
 
 func (m *benchMonitor) isComplete() (bool, error) {
-	m.logger.Info("IsComplete? enter")
+	m.logger.Debug("IsComplete? enter")
 	filterStartTime := m.request.StartTime.Add(-10 * time.Second)
 	ws, err := m.client.ListOpenWorkflow(m.ctx, &workflowservice.ListOpenWorkflowExecutionsRequest{
 		MaximumPageSize: 1,
@@ -146,11 +147,11 @@ func (m *benchMonitor) isComplete() (bool, error) {
 		},
 	})
 	if err != nil {
-		m.logger.Info("IsComplete? exit", "error", err)
+		m.logger.Debug("IsComplete? exit", "error", err)
 		return false, err
 	}
 	done := len(ws.Executions) == 0
-	m.logger.Info(fmt.Sprintf("IsComplete? %t", done))
+	m.logger.Debug(fmt.Sprintf("IsComplete? %t", done))
 	return done, nil
 }
 

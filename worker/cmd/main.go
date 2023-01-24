@@ -54,7 +54,7 @@ import (
 )
 
 func main() {
-	logger, err := zap.NewDevelopment()
+	logger, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
@@ -295,6 +295,7 @@ func getTLSConfig(hostPort string, logger *zap.Logger) (*tls.Config, error) {
 	clientCertFile := getEnvOrDefaultString(logger, "TLS_CLIENT_CERT_FILE", "")
 	clientCertPrivateKeyFile := getEnvOrDefaultString(logger, "TLS_CLIENT_CERT_PRIVATE_KEY_FILE", "")
 	enableHostVerification := getEnvOrDefaultBool(logger, "TLS_ENABLE_HOST_VERIFICATION", false)
+	serverName := getEnvOrDefaultString(logger, "TLS_SERVER_NAME", host)
 
 	caBytes, err := getTLSBytes(caCertFile, caCertData)
 	if err != nil {
@@ -333,7 +334,7 @@ func getTLSConfig(hostPort string, logger *zap.Logger) (*tls.Config, error) {
 	if caPool != nil || cert != nil {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: !enableHostVerification,
-			ServerName:         host,
+			ServerName:         serverName,
 		}
 		if caPool != nil {
 			tlsConfig.RootCAs = caPool

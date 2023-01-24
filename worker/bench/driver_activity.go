@@ -25,12 +25,13 @@ package bench
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/pkg/errors"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 	"golang.org/x/time/rate"
-	"time"
 )
 
 func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActivityRequest) error {
@@ -71,7 +72,7 @@ func (d *benchDriver) run() error {
 		var completedIdx int
 		if err := activity.GetHeartbeatDetails(d.ctx, &completedIdx); err == nil {
 			idx = completedIdx + 1
-			d.logger.Info("resuming from failed attempt", "ReportedProgress", completedIdx)
+			d.logger.Warn("resuming from failed attempt", "ReportedProgress", completedIdx)
 		}
 	}
 
@@ -110,7 +111,7 @@ func (d *benchDriver) run() error {
 }
 
 func (d *benchDriver) execute(iterationID int) error {
-	d.logger.Info("driver.execute starting", "workflowName", d.request.WorkflowName, "basedID", d.request.BaseID, "iterationID", iterationID)
+	d.logger.Debug("driver.execute starting", "workflowName", d.request.WorkflowName, "basedID", d.request.BaseID, "iterationID", iterationID)
 	workflowID := fmt.Sprintf("%s-%s-%d", d.request.WorkflowName, d.request.BaseID, iterationID)
 	startOptions := client.StartWorkflowOptions{
 		ID:                       workflowID,
