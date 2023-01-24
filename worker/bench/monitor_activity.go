@@ -25,13 +25,14 @@ package bench
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"go.temporal.io/api/filter/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
-	"strings"
-	"time"
 )
 
 func (a *Activities) MonitorActivity(ctx context.Context, request benchMonitorActivityRequest) ([]histogramValue, error) {

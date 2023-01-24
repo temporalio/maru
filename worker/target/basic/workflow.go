@@ -48,7 +48,7 @@ func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 
 	ao := workflow.ActivityOptions{
 		TaskQueue:           taskQueue,
-		StartToCloseTimeout: time.Duration(request.ActivityDurationMilliseconds)*time.Millisecond + 10 * time.Minute,
+		StartToCloseTimeout: time.Duration(request.ActivityDurationMilliseconds)*time.Millisecond + 10*time.Minute,
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 

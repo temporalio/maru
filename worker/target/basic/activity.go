@@ -25,7 +25,7 @@ package basic
 import (
 	"context"
 	"time"
-	
+
 	"go.temporal.io/sdk/activity"
 )
 
