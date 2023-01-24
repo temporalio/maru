@@ -44,7 +44,7 @@ func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 
 	logger := workflow.GetLogger(ctx)
 
-	logger.Info("basic workflow started", "activity task queue", taskQueue)
+	logger.Debug("basic workflow started", "activity task queue", taskQueue)
 
 	ao := workflow.ActivityOptions{
 		TaskQueue:           taskQueue,
@@ -79,9 +79,9 @@ func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 			allResults[i] = result
 		}
 
-		logger.Info("activity returned result to the workflow", "value", allResults)
+		logger.Debug("activity returned result to the workflow", "value", allResults)
 	}
 
-	logger.Info("basic workflow completed")
+	logger.Debug("basic workflow completed")
 	return request.ResultPayload, nil
 }

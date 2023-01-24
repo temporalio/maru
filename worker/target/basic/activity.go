@@ -38,10 +38,10 @@ type basicActivityRequest struct {
 // Activity is the implementation for Basic Workflow
 func Activity(ctx context.Context, req basicActivityRequest) (string, error) {
 	logger := activity.GetLogger(ctx)
-	logger.Info("Activity: start", "Duration, ms", req.ActivityDelayMilliseconds)
+	logger.Debug("Activity: start", "Duration, ms", req.ActivityDelayMilliseconds)
 	if req.ActivityDelayMilliseconds > 0 {
 		time.Sleep(time.Duration(req.ActivityDelayMilliseconds) * time.Millisecond)
 	}
-	logger.Info("Activity: end")
+	logger.Debug("Activity: end")
 	return req.ResultPayload, nil
 }

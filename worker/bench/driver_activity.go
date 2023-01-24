@@ -111,7 +111,7 @@ func (d *benchDriver) run() error {
 }
 
 func (d *benchDriver) execute(iterationID int) error {
-	d.logger.Info("driver.execute starting", "workflowName", d.request.WorkflowName, "basedID", d.request.BaseID, "iterationID", iterationID)
+	d.logger.Debug("driver.execute starting", "workflowName", d.request.WorkflowName, "basedID", d.request.BaseID, "iterationID", iterationID)
 	workflowID := fmt.Sprintf("%s-%s-%d", d.request.WorkflowName, d.request.BaseID, iterationID)
 	startOptions := client.StartWorkflowOptions{
 		ID:                       workflowID,
