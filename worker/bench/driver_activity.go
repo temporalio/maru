@@ -72,7 +72,7 @@ func (d *benchDriver) run() error {
 		var completedIdx int
 		if err := activity.GetHeartbeatDetails(d.ctx, &completedIdx); err == nil {
 			idx = completedIdx + 1
-			d.logger.Info("resuming from failed attempt", "ReportedProgress", completedIdx)
+			d.logger.Warn("resuming from failed attempt", "ReportedProgress", completedIdx)
 		}
 	}
 
