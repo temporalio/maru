@@ -70,7 +70,7 @@ type (
 		// TaskQueue is the name of the task queue to use when executing the workflow.
 		TaskQueue string `json:"taskqueue"`
 		// Args is the argument that should be the input of all executions of the workflow under test.
-		Args interface{} `json:"args"`
+		Args []interface{} `json:"args"`
 	}
 	benchWorkflowRequestReporting struct {
 		// IntervalInSeconds defines the granularity of the result histogram.

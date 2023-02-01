@@ -28,22 +28,27 @@ import (
 	"strconv"
 )
 
-func buildPayload(params interface{}) interface{} {
-	olds, ok := params.(map[string]interface{})
-	if !ok {
-		return params
-	}
-	news := map[string]interface{}{}
-	for k, v := range olds {
-		if str, ok := v.(string); ok {
-			if newValue, ok := eval(str); ok {
-				news[k] = newValue
-				continue
-			}
+func buildPayload(paramsArr []interface{}) []interface{} {
+	output := []interface{}{}
+	for _, params := range paramsArr {
+		olds, ok := params.(map[string]interface{})
+		if !ok {
+			output = append(output, params)
+			continue
 		}
-		news[k] = v
+		news := map[string]interface{}{}
+		for k, v := range olds {
+			if str, ok := v.(string); ok {
+				if newValue, ok := eval(str); ok {
+					news[k] = newValue
+					continue
+				}
+			}
+			news[k] = v
+		}
+		output = append(output, news)
 	}
-	return news
+	return output
 }
 
 var randomRegex = regexp.MustCompile(`\$RANDOM\(([0-9]+)\)`)

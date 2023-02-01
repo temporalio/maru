@@ -6,10 +6,10 @@
     "workflow": {
         "name": "basic-workflow",
         "taskQueue": "temporal-basic",
-        "args": {
+        "args": [{
             "sequenceCount": 3,
             "payload": "$RANDOM(100)",
             "resultPayload": "$RANDOM_NORM(80,10)"
-        }
+        }]
     }
 }

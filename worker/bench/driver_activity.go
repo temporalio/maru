@@ -25,12 +25,13 @@ package bench
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/pkg/errors"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 	"golang.org/x/time/rate"
-	"time"
 )
 
 func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActivityRequest) error {
@@ -51,7 +52,7 @@ type (
 		BaseID        string
 		BatchSize     int
 		Rate          int
-		Parameters    interface{}
+		Parameters    []interface{}
 	}
 	benchDriver struct {
 		ctx     context.Context
@@ -118,7 +119,7 @@ func (d *benchDriver) execute(iterationID int) error {
 		WorkflowExecutionTimeout: 30 * time.Minute,
 		WorkflowTaskTimeout:      defaultWorkflowTaskStartToCloseTimeoutDuration,
 	}
-	_, err := d.client.ExecuteWorkflow(d.ctx, startOptions, d.request.WorkflowName, buildPayload(d.request.Parameters))
+	_, err := d.client.ExecuteWorkflow(d.ctx, startOptions, d.request.WorkflowName, buildPayload(d.request.Parameters)...)
 	if err != nil {
 		d.logger.Error("failed to start workflow", "Error", err, "ID", workflowID)
 	}

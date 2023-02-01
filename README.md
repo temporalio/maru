@@ -148,10 +148,10 @@ You can tweak the parameters of the benchmark scenario by adjusting the JSON fil
     "workflow": {
         "name": "basic-workflow",
         "taskQueue": "temporal-basic",
-        "args": {
+        "args": [{
             "sequenceCount": 3,
             "parallelCount": 1
-        }
+        }]
     },
     "report": {
         "intervalInSeconds": 10
@@ -181,11 +181,11 @@ Here is the definition of the workflow in `./scenarios/basic-payload.json`:
 "workflow": {
     "name": "basic-workflow",
     "taskQueue": "temporal-basic",
-    "args": {
+    "args": [{
         "sequenceCount": 3,
         "payload": "$RANDOM(100)",
         "resultPayload": "$RANDOM_NORM(80,10)"
-    }
+    }]
 }
 ```
 

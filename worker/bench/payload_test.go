@@ -28,28 +28,34 @@ import (
 )
 
 func TestBuildParametersNoChangeInUnrelatedStruct(t *testing.T) {
-	x := map[string]interface{}{"Hello": 123}
+	input := map[string]interface{}{"Hello": 123}
+	x := []interface{}{input}
 	actual := buildPayload(x)
 	assert.Equal(t, x, actual)
 }
 
 func TestBuildParametersNoChangeInFixedPayload(t *testing.T) {
-	x := map[string]interface{}{"payload": "123"}
+	input := map[string]interface{}{"payload": "123"}
+	x := []interface{}{input}
 	actual := buildPayload(x)
 	assert.Equal(t, x, actual)
 }
 
 func TestBuildParametersRandomPayload(t *testing.T) {
-	x := map[string]interface{}{"payload": "$RANDOM(10)"}
-	y := buildPayload(x).(map[string]interface{})
-	assert.NotEqual(t, x["payload"], y["payload"])
+	input := map[string]interface{}{"payload": "$RANDOM(10)"}
+	x := []interface{}{input}
+	temp := buildPayload(x)
+	y := temp[0].(map[string]interface{})
+	assert.NotEqual(t, input["payload"], y["payload"])
 	assert.Equal(t, 10, len(y["payload"].(string)))
 }
 
 func TestBuildParametersRandomNormalPayload(t *testing.T) {
-	x := map[string]interface{}{"payload": "$RANDOM_NORM(80,10)"}
-	y := buildPayload(x).(map[string]interface{})
-	assert.NotEqual(t, x["payload"], y["payload"])
+	input := map[string]interface{}{"payload": "$RANDOM_NORM(80,10)"}
+	x := []interface{}{input}
+	temp := buildPayload(x)
+	y := temp[0].(map[string]interface{})
+	assert.NotEqual(t, input["payload"], y["payload"])
 	actual := len(y["payload"].(string))
 	assert.Greater(t, actual, 0)
 	assert.Less(t, actual, 160)
