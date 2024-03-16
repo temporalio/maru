@@ -17,6 +17,9 @@ spec:
         prometheus.io/job: {{ $.Chart.Name }}
         prometheus.io/scrape: 'true'
         prometheus.io/port: '9090'
+        {{- with $.Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
