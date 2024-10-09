@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This tool is deprecated, please use [Omes](https://github.com/temporalio/omes) instead.
+
 # Maru - Temporal Load Simulator
 
 Tool to generate load for [Temporal](https://github.com/temporalio/temporal/) workflows. Named after [Kobayashi Maru](https://en.m.wikipedia.org/wiki/Kobayashi_Maru).
